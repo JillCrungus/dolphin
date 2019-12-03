@@ -14,6 +14,7 @@
 #include "Core/GeckoCode.h"
 #include "Core/HLE/HLE_Misc.h"
 #include "Core/HLE/HLE_OS.h"
+#include "Core/HLE/TS3/HLE_TS3.h"
 #include "Core/HW/Memmap.h"
 #include "Core/IOS/ES/ES.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
@@ -42,7 +43,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 21> OSPatches{{
+constexpr std::array<SPatch, 22> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -72,7 +73,10 @@ constexpr std::array<SPatch, 21> OSPatches{{
 
     {"GeckoCodehandler",             HLE_Misc::GeckoCodeHandlerICacheFlush, HookType::Start,   HookFlag::Fixed},
     {"GeckoHandlerReturnTrampoline", HLE_Misc::GeckoReturnTrampoline,       HookType::Replace, HookFlag::Fixed},
-    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed} // apploader needs OSReport-like function
+    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed}, // apploader needs OSReport-like function
+
+    //TS3 Patches
+    {"LoadBindPose",                 HLE_TS3::HLE_LoadBindPose,             HookType::Start,   HookFlag::Fixed} //Called by bind pose init func in TS3
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -93,6 +97,11 @@ void Patch(u32 addr, std::string_view func_name)
   }
 }
 
+void PatchTS3Functions()
+{
+  Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
+}
+
 void PatchFixedFunctions()
 {
   // HLE jump to loader (homebrew).  Disabled when Gecko is active as it interferes with the code
@@ -109,6 +118,8 @@ void PatchFixedFunctions()
   // This has to always be installed even if cheats are not enabled because of the possiblity of
   // loading a savestate where PC is inside the code handler while cheats are disabled.
   Patch(Gecko::HLE_TRAMPOLINE_ADDRESS, "GeckoHandlerReturnTrampoline");
+
+  PatchTS3Functions();
 }
 
 void PatchFunctions()

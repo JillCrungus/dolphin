@@ -166,6 +166,9 @@
     <Filter Include="HW %28Flipper/Hollywood%29\Wiimote\Emu\Extension">
       <UniqueIdentifier>{68c09d7e-4f5a-435d-a0d2-7eb7a74d7054}</UniqueIdentifier>
     </Filter>
+    <Filter Include="HLE\TS3">
+      <UniqueIdentifier>{aa6b678d-08ea-46b4-b2d3-398f2a2a07a1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BootManager.cpp" />
@@ -936,6 +939,9 @@
       <Filter>HW %28Flipper/Hollywood%29</Filter>
     </ClCompile>
     <ClCompile Include="PowerPC\ConditionRegister.cpp" />
+    <ClCompile Include="HLE\TS3\HLE_TS3.cpp">
+      <Filter>HLE\TS3</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BootManager.h" />
@@ -1667,6 +1673,9 @@
     <ClInclude Include="PowerPC\ConditionRegister.h" />
     <ClInclude Include="HW\AddressSpace.h">
       <Filter>HW %28Flipper/Hollywood%29</Filter>
+    </ClInclude>
+    <ClInclude Include="HLE\TS3\HLE_TS3.h">
+      <Filter>HLE\TS3</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
