@@ -31,6 +31,7 @@ void HostWrite_U64(u64 var, u32 address);
 void HostWrite_F32(float var, u32 address);
 void HostWrite_F64(double var, u32 address);
 
+void HostWrite_String(const char* var, const u32 address);
 std::string HostGetString(u32 address, size_t size = 0);
 
 // Returns whether a read or write to the given address will resolve to a RAM

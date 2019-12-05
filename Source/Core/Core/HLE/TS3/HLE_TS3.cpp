@@ -1,4 +1,4 @@
-#include "Core/HLE/HLE_Misc.h"
+#include "Core/HLE/TS3/HLE_TS3.h"
 
 #include "Common/Common.h"
 #include "Common/CommonTypes.h"
@@ -39,6 +39,41 @@ void HLE_LoadBindPose()
   }
 
   INFO_LOG(TS3, "Calling FUN_80022438(%s, %i, 0)", filename, param_2);
+}
+
+void HLE_GetCurrentLevelPADPath()
+{
+  u32 currLevelID = PowerPC::HostRead_U32(CURRENT_LEVEL_NUMBER_ADDRESS);
+  std::string padTemplate = PowerPC::HostGetString(PAD_FILE_TEMPLATE_ADDRESS);
+
+  INFO_LOG(TS3, "Current level: %i", currLevelID);
+
+  char finalPath[64];
+  memset(finalPath, 0, sizeof(finalPath));
+
+  sprintf(finalPath, padTemplate.c_str(), currLevelID);
+
+  INFO_LOG(TS3, "PAD path for current level: %s", finalPath);
+}
+
+void SetNextMusicTrack()
+{
+  /*
+  std::string filename = PowerPC::HostGetString(GPR(3));
+  u32 param_2 = PowerPC::HostRead_U32(GPR(4));
+  u32 param_3 = PowerPC::HostRead_U32(GPR(5));
+
+  INFO_LOG(TS3, "Setting next track to %s with parameters %i %i", filename.c_str(), param_2,
+           param_3);
+
+  //PowerPC::HostWrite_String(filename.c_str(), g_MusicToPlay);
+
+  //PowerPC::HostWrite_U32(1, 0x805ad4b8);
+  //PowerPC::HostWrite_U32(param_2, 0x805ad4bc);
+  //PowerPC::HostWrite_U32(param_3, 0x805ad4c0);
+
+  GPR(3) = 0;
+  */
 }
 
 }  // namespace HLE_TS3

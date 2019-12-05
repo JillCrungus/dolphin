@@ -928,6 +928,8 @@ void MainWindow::StartGame(const std::vector<std::string>& paths,
   StartGame(BootParameters::GenerateFromFile(paths, savestate_path));
 }
 
+std::array<std::string, 5> validIDs{"G3FP69", "G3FF69", "G3FE69", "G3FD69", "G3FS69"};
+
 void MainWindow::StartGame(std::unique_ptr<BootParameters>&& parameters)
 {
   // If we're running, only start a new game once we've stopped the last.
@@ -941,7 +943,15 @@ void MainWindow::StartGame(std::unique_ptr<BootParameters>&& parameters)
     return;
   }
 
-  // We need the render widget before booting.
+  std::string id = SConfig::GetInstance().GetGameID();
+  /*
+  if (std::find(std::begin(validIDs), std::end(validIDs), id) == std::end(validIDs))
+  {
+    ModalMessageBox::critical(this, tr("Error"), tr("This modified build of Dolphin is specifically designed to play TimeSplitters: Future Perfect. It cannot run any other game. Please select a TimeSplitters: Future Perfect game file."), QMessageBox::Ok);
+    return;
+  }
+  */
+   // We need the render widget before booting.
   ShowRenderWidget();
 
   // Boot up, show an error if it fails to load the game.

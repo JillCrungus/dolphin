@@ -43,7 +43,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 22> OSPatches{{
+constexpr std::array<SPatch, 23> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -76,7 +76,9 @@ constexpr std::array<SPatch, 22> OSPatches{{
     {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed}, // apploader needs OSReport-like function
 
     //TS3 Patches
-    {"LoadBindPose",                 HLE_TS3::HLE_LoadBindPose,             HookType::Start,   HookFlag::Fixed} //Called by bind pose init func in TS3
+    //{"LoadBindPose",                 HLE_TS3::HLE_LoadBindPose,             HookType::Start,   HookFlag::Fixed}, //Called by bind pose init func in TS3
+    {"GetCurrentLevelPADPath",       HLE_TS3::HLE_GetCurrentLevelPADPath,   HookType::Start,   HookFlag::Fixed},  //Gets filepathpath for the current level's PAD data
+    {"SetNextMusicTrack",            HLE_TS3::SetNextMusicTrack,            HookType::None, HookFlag::Fixed}  //Sets the next music track to be played, disabled until it doesn't crash
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -100,6 +102,8 @@ void Patch(u32 addr, std::string_view func_name)
 void PatchTS3Functions()
 {
   Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
+  //Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
+  Patch(HLE_TS3::SET_NEXT_MUSIC_TRACK_ADDRESS, "SetNextMusicTrack");
 }
 
 void PatchFixedFunctions()
