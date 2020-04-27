@@ -28,6 +28,8 @@ void SetNextMusicTrack();
 
 constexpr u32 CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC = 0x8045f6ec;
 
+constexpr u32 PLAY_THP_ADDRESS = 0x801821bc;
+
 static challengecharacterset test_set[] = {
   {25, 1.0f, 0},
   {37, 1.0f, 0},

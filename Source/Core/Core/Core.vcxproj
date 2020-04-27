@@ -313,6 +313,7 @@
     <ClCompile Include="State.cpp" />
     <ClCompile Include="SysConf.cpp" />
     <ClCompile Include="TitleDatabase.cpp" />
+    <ClCompile Include="TS\TSConfigManager.cpp" />
     <ClCompile Include="WiiRoot.cpp" />
     <ClCompile Include="WiiUtils.cpp" />
   </ItemGroup>
@@ -574,6 +575,7 @@
     <ClInclude Include="SysConf.h" />
     <ClInclude Include="Titles.h" />
     <ClInclude Include="TitleDatabase.h" />
+    <ClInclude Include="TS\TSConfigManager.h" />
     <ClInclude Include="WiiRoot.h" />
     <ClInclude Include="WiiUtils.h" />
   </ItemGroup>

@@ -26,6 +26,7 @@
 #include "Core/Config/MainSettings.h"
 #include "Core/ConfigLoaders/BaseConfigLoader.h"
 #include "Core/ConfigManager.h"
+#include "Core/TS/TSConfigManager.h"
 #include "Core/Core.h"
 #include "Core/HW/ProcessorInterface.h"
 #include "Core/HW/Wiimote.h"
@@ -92,6 +93,7 @@ void Init()
   Config::AddConfigChangedCallback(InitCustomPaths);
   Config::AddLayer(ConfigLoaders::GenerateBaseConfigLoader());
   SConfig::Init();
+  TSConfig::Init();
   Discord::Init();
   Common::Log::LogManager::Init();
   VideoBackendBase::PopulateList();
@@ -110,6 +112,7 @@ void Shutdown()
   Common::Log::LogManager::Shutdown();
   Discord::Shutdown();
   SConfig::Shutdown();
+  TSConfig::Shutdown();
   Config::Shutdown();
 }
 

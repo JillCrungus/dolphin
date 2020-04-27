@@ -42,6 +42,7 @@ class SettingsWindow;
 class ToolBar;
 class WatchWidget;
 class WiiTASInputWindow;
+class TSConfigWindow;
 
 namespace DiscIO
 {
@@ -145,6 +146,7 @@ private:
   void ShowAudioWindow();
   void ShowControllersWindow();
   void ShowGraphicsWindow();
+  void ShowTSWindow();
   void ShowAboutDialog();
   void ShowHotkeyDialog();
   void ShowNetPlaySetupDialog();
@@ -208,6 +210,7 @@ private:
   ControllersWindow* m_controllers_window = nullptr;
   SettingsWindow* m_settings_window = nullptr;
   GraphicsWindow* m_graphics_window = nullptr;
+  TSConfigWindow* m_ts_window = nullptr;
   FIFOPlayerWindow* m_fifo_window = nullptr;
   MappingWindow* m_hotkey_window = nullptr;
 

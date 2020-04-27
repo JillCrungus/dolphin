@@ -169,6 +169,9 @@
     <Filter Include="HLE\TS3">
       <UniqueIdentifier>{aa6b678d-08ea-46b4-b2d3-398f2a2a07a1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="TS">
+      <UniqueIdentifier>{f6c0922c-7df3-4352-a1e6-d8711cb19f0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BootManager.cpp" />
@@ -942,6 +945,9 @@
     <ClCompile Include="HLE\TS3\HLE_TS3.cpp">
       <Filter>HLE\TS3</Filter>
     </ClCompile>
+    <ClCompile Include="TS\TSConfigManager.cpp">
+      <Filter>TS</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BootManager.h" />
@@ -1676,6 +1682,9 @@
     </ClInclude>
     <ClInclude Include="HLE\TS3\HLE_TS3.h">
       <Filter>HLE\TS3</Filter>
+    </ClInclude>
+    <ClInclude Include="TS\TSConfigManager.h">
+      <Filter>TS</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

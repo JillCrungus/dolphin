@@ -19,6 +19,7 @@
 #include "Core/IOS/ES/ES.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
 #include "Core/PowerPC/PowerPC.h"
+#include "Core/TS/TSConfigManager.h"
 
 namespace HLE
 {
@@ -43,7 +44,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 22> OSPatches{{
+constexpr std::array<SPatch, 23> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -78,8 +79,11 @@ constexpr std::array<SPatch, 22> OSPatches{{
     //TS3 Patches
     //{"LoadBindPose",                 HLE_TS3::HLE_LoadBindPose,             HookType::Start,   HookFlag::Fixed}, //Called by bind pose init func in TS3
     //{"GetCurrentLevelPADPath",       HLE_TS3::HLE_GetCurrentLevelPADPath,   HookType::Start,   HookFlag::Fixed},  //Gets filepathpath for the current level's PAD data
-    {"SetNextMusicTrack",            HLE_TS3::SetNextMusicTrack,            HookType::None, HookFlag::Fixed}  //Sets the next music track to be played, disabled until it doesn't crash
+    {"SetNextMusicTrack",            HLE_TS3::SetNextMusicTrack,            HookType::None, HookFlag::Fixed},  //Sets the next music track to be played, disabled until it doesn't crash
    // {"Last_Stand_Horror_ChrSet_Ptr", (void*)HLE_TS3::test_set, HookType::Replace, HookFlag::Fixed}
+
+  {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed}
+
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -151,6 +155,12 @@ void PatchTS3Functions()
   // Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
   // Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
   Patch(HLE_TS3::SET_NEXT_MUSIC_TRACK_ADDRESS, "SetNextMusicTrack");
+
+  if (TSConfig::GetInstance().bSkipVideos)
+  {
+    INFO_LOG(TS3, "User has requested video skip hack");
+    Patch(HLE_TS3::PLAY_THP_ADDRESS, "SkipVideoFiles");
+  }
 
   // Extra memory thing test go!!
 

@@ -129,6 +129,7 @@ void ToolBar::MakeActions()
 
   m_config_action = addAction(tr("Config"), this, &ToolBar::SettingsPressed);
   m_graphics_action = addAction(tr("Graphics"), this, &ToolBar::GraphicsPressed);
+  m_ts_action = addAction(tr("TimeSplitters"), this, &ToolBar::TSPressed);
   m_controllers_action = addAction(tr("Controllers"), this, &ToolBar::ControllersPressed);
   m_controllers_action->setEnabled(true);
 
@@ -195,4 +196,5 @@ void ToolBar::UpdateIcons()
   m_config_action->setIcon(Resources::GetScaledThemeIcon("config"));
   m_controllers_action->setIcon(Resources::GetScaledThemeIcon("classic"));
   m_graphics_action->setIcon(Resources::GetScaledThemeIcon("graphics"));
+  m_ts_action->setIcon(Resources::GetScaledThemeIcon("config"));
 }

@@ -67,6 +67,7 @@
 #include "DolphinQt/Config/LogWidget.h"
 #include "DolphinQt/Config/Mapping/MappingWindow.h"
 #include "DolphinQt/Config/SettingsWindow.h"
+#include "DolphinQt/Config/TimeSplittersWindow.h"
 #include "DolphinQt/Debugger/BreakpointWidget.h"
 #include "DolphinQt/Debugger/CodeViewWidget.h"
 #include "DolphinQt/Debugger/CodeWidget.h"
@@ -581,6 +582,7 @@ void MainWindow::ConnectToolBar()
   connect(m_tool_bar, &ToolBar::SettingsPressed, this, &MainWindow::ShowSettingsWindow);
   connect(m_tool_bar, &ToolBar::ControllersPressed, this, &MainWindow::ShowControllersWindow);
   connect(m_tool_bar, &ToolBar::GraphicsPressed, this, &MainWindow::ShowGraphicsWindow);
+  connect(m_tool_bar, &ToolBar::TSPressed, this, &MainWindow::ShowTSWindow);
 
   connect(m_tool_bar, &ToolBar::StepPressed, m_code_widget, &CodeWidget::Step);
   connect(m_tool_bar, &ToolBar::StepOverPressed, m_code_widget, &CodeWidget::StepOver);
@@ -1154,6 +1156,17 @@ void MainWindow::ShowGraphicsWindow()
   m_graphics_window->show();
   m_graphics_window->raise();
   m_graphics_window->activateWindow();
+}
+
+void MainWindow::ShowTSWindow()
+{
+  if (!m_ts_window)
+  {
+    m_ts_window = new TSConfigWindow(this);
+  }
+  m_ts_window->show();
+  m_ts_window->raise();
+  m_ts_window->activateWindow();
 }
 
 void MainWindow::ShowNetPlaySetupDialog()
