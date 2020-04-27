@@ -582,6 +582,13 @@ float HostRead_F32(const u32 address)
   return Common::BitCast<float>(integral);
 }
 
+int HostRead_S32(const u32 address)
+{
+  const u32 integral = HostRead_U32(address);
+
+  return Common::BitCast<int>(integral);
+}
+
 double HostRead_F64(const u32 address)
 {
   const u64 integral = HostRead_U64(address);

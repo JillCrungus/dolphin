@@ -43,7 +43,8 @@ enum
   // what will be reported in lowmem, and thus used by emulated software.
   // Note: Writing to lowmem is done by IPL. If using retail IPL, it will
   // always be set to 24MB.
-  REALRAM_SIZE = 0x01800000,
+ // REALRAM_SIZE = 0x01800000,
+  REALRAM_SIZE = 0x03000000, //Jill: More memory mapped to give us room for loading our own data.
   RAM_SIZE = MathUtil::NextPowerOf2(REALRAM_SIZE),
   RAM_MASK = RAM_SIZE - 1,
   FAKEVMEM_SIZE = 0x02000000,

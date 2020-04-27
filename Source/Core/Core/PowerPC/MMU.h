@@ -24,6 +24,8 @@ float HostRead_F32(u32 address);
 double HostRead_F64(u32 address);
 u32 HostRead_Instruction(u32 address);
 
+int HostRead_S32(u32 address);
+
 void HostWrite_U8(u8 var, u32 address);
 void HostWrite_U16(u16 var, u32 address);
 void HostWrite_U32(u32 var, u32 address);
