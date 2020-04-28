@@ -44,7 +44,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 23> OSPatches{{
+constexpr std::array<SPatch, 24> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -82,7 +82,8 @@ constexpr std::array<SPatch, 23> OSPatches{{
     {"SetNextMusicTrack",            HLE_TS3::SetNextMusicTrack,            HookType::None, HookFlag::Fixed},  //Sets the next music track to be played, disabled until it doesn't crash
    // {"Last_Stand_Horror_ChrSet_Ptr", (void*)HLE_TS3::test_set, HookType::Replace, HookFlag::Fixed}
 
-  {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed}
+  {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed},
+  {"WindowSetDebug", HLE_TS3::HLE_DebugWindowSet, HookType::Start, HookFlag::Fixed}
 
 }};
 
@@ -156,10 +157,25 @@ void PatchTS3Functions()
   // Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
   Patch(HLE_TS3::SET_NEXT_MUSIC_TRACK_ADDRESS, "SetNextMusicTrack");
 
+  //Patch(0x8001c710, "WindowSetDebug");
+
   if (TSConfig::GetInstance().bSkipVideos)
   {
     INFO_LOG(TS3, "User has requested video skip hack");
     Patch(HLE_TS3::PLAY_THP_ADDRESS, "SkipVideoFiles");
+  }
+
+  if (TSConfig::GetInstance().bVerticalSplitscreen)
+  {
+    // Player 1
+    PowerPC::HostWrite_U32(0x80ad9088, 0x80259444);  // lwz        r5,-0x6f78(r13)
+    PowerPC::HostWrite_U32(0x38e5ffff, 0x8025944c);  // subi       r7,r5,0x1
+    PowerPC::HostWrite_U32(0x38deffff, 0x80259454);  // subi       r6,Half_screen_width,0x1
+
+    // Player 2
+    PowerPC::HostWrite_U32(0x38a00000, 0x80259470);  // li         r5,0x0
+    //PowerPC::HostWrite_U32(0x38deffff, 0x80259474);  // subi       r6,Half_screen_width,0x1
+    PowerPC::HostWrite_U32(0x7fc4f378, 0x80259478);  // or r4,half_screen_width,half_screen_width
   }
 
   // Extra memory thing test go!!

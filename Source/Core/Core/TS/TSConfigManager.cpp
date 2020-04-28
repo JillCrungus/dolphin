@@ -48,6 +48,7 @@ void TSConfig::SaveGeneralSettings(IniFile& ini)
 
   // General
   general->Set("SkipVideos", bSkipVideos);
+  general->Set("VerticalSplit", bVerticalSplitscreen);
 }
 
 void TSConfig::LoadSettings()
@@ -66,9 +67,11 @@ void TSConfig::LoadGeneralSettings(IniFile& ini)
   IniFile::Section* general = ini.GetOrCreateSection("General");
 
   general->Get("SkipVideos", &bSkipVideos, false);
+  general->Get("VerticalSplit", &bVerticalSplitscreen, false);
 }
 
 void TSConfig::LoadDefaults()
 {
   bSkipVideos = false;
+  bVerticalSplitscreen = false;
 }

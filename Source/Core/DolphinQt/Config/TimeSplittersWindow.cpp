@@ -77,6 +77,7 @@ void TSGeneralPane::OnEmulationStateChanged(Core::State state)
 void TSGeneralPane::ConnectLayout()
 {
   connect(m_checkbox_skipvideos, &QCheckBox::toggled, this, &TSGeneralPane::OnSaveConfig);
+  connect(m_checkbox_verticalsplit, &QCheckBox::toggled, this, &TSGeneralPane::OnSaveConfig);
 }
 
 void TSGeneralPane::CreateBasic()
@@ -87,12 +88,15 @@ void TSGeneralPane::CreateBasic()
   m_main_layout->addWidget(basic_group);
 
   m_checkbox_skipvideos = new QCheckBox(tr("Skip videos (EA + FRD logos, attract screen)"));
+  m_checkbox_verticalsplit = new QCheckBox(tr("Vertical splitscreen"));
   basic_group_layout->addWidget(m_checkbox_skipvideos);
+  basic_group_layout->addWidget(m_checkbox_verticalsplit);
 }
 
 void TSGeneralPane::LoadConfig()
 {
   m_checkbox_skipvideos->setChecked(TSConfig::GetInstance().bSkipVideos);
+  m_checkbox_verticalsplit->setChecked(TSConfig::GetInstance().bVerticalSplitscreen);
 }
 
 void TSGeneralPane::OnSaveConfig()
@@ -102,6 +106,7 @@ void TSGeneralPane::OnSaveConfig()
   auto& settings = TSConfig::GetInstance();
 
   settings.bSkipVideos = m_checkbox_skipvideos->isChecked();
+  settings.bVerticalSplitscreen = m_checkbox_verticalsplit->isChecked();
   //Config::SetBaseOrCurrent(Config::MAIN_CPU_THREAD, m_checkbox_dualcore->isChecked());
 
   settings.SaveSettings();

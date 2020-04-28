@@ -26,6 +26,8 @@ constexpr u32 SET_NEXT_MUSIC_TRACK_ADDRESS = 0X801a16ec;
 constexpr u32 g_MusicToPlay = 0x805be598;
 void SetNextMusicTrack();
 
+void HLE_DebugWindowSet();
+
 constexpr u32 CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC = 0x8045f6ec;
 
 constexpr u32 PLAY_THP_ADDRESS = 0x801821bc;

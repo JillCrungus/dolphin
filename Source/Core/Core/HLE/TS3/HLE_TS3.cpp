@@ -56,6 +56,17 @@ void HLE_GetCurrentLevelPADPath()
   INFO_LOG(TS3, "PAD path for current level: %s", finalPath);
 }
 
+void HLE_DebugWindowSet()
+{
+  u32 x1 = GPR(4);
+  u32 y1 = GPR(5);
+
+  u32 x2 = GPR(6);
+  u32 y2 = GPR(7);
+
+  INFO_LOG(TS3, "[Setting window] x1: %i, y1: %i, x2: %i, y2: %i ", x1, y1, x2, y2);
+}
+
 void SetNextMusicTrack()
 {
   /*

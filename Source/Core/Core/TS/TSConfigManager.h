@@ -8,6 +8,7 @@ class IniFile;
 struct TSConfig
 {
   bool bSkipVideos = false;
+  bool bVerticalSplitscreen = false;
 
   void LoadDefaults();
 
