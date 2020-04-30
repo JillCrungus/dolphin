@@ -51,4 +51,5 @@ private:
   QVBoxLayout* m_main_layout;
   QCheckBox* m_checkbox_skipvideos;
   QCheckBox* m_checkbox_verticalsplit;
+  QCheckBox* m_checkbox_fixbuttoncodes;
 };

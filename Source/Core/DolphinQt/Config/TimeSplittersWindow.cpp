@@ -72,12 +72,15 @@ void TSGeneralPane::OnEmulationStateChanged(Core::State state)
   const bool running = state != Core::State::Uninitialized;
 
   m_checkbox_skipvideos->setEnabled(!running);
+  m_checkbox_verticalsplit->setEnabled(!running);
+  m_checkbox_fixbuttoncodes->setEnabled(!running);
 }
 
 void TSGeneralPane::ConnectLayout()
 {
   connect(m_checkbox_skipvideos, &QCheckBox::toggled, this, &TSGeneralPane::OnSaveConfig);
   connect(m_checkbox_verticalsplit, &QCheckBox::toggled, this, &TSGeneralPane::OnSaveConfig);
+  connect(m_checkbox_fixbuttoncodes, &QCheckBox::toggled, this, &TSGeneralPane::OnSaveConfig);
 }
 
 void TSGeneralPane::CreateBasic()
@@ -89,14 +92,17 @@ void TSGeneralPane::CreateBasic()
 
   m_checkbox_skipvideos = new QCheckBox(tr("Skip videos (EA + FRD logos, attract screen)"));
   m_checkbox_verticalsplit = new QCheckBox(tr("Vertical splitscreen"));
+  m_checkbox_fixbuttoncodes = new QCheckBox(tr("Fix button codes to not be frame-perfect"));
   basic_group_layout->addWidget(m_checkbox_skipvideos);
   basic_group_layout->addWidget(m_checkbox_verticalsplit);
+  basic_group_layout->addWidget(m_checkbox_fixbuttoncodes);
 }
 
 void TSGeneralPane::LoadConfig()
 {
   m_checkbox_skipvideos->setChecked(TSConfig::GetInstance().bSkipVideos);
   m_checkbox_verticalsplit->setChecked(TSConfig::GetInstance().bVerticalSplitscreen);
+  m_checkbox_fixbuttoncodes->setChecked(TSConfig::GetInstance().bFixButtonCodes);
 }
 
 void TSGeneralPane::OnSaveConfig()
@@ -107,6 +113,7 @@ void TSGeneralPane::OnSaveConfig()
 
   settings.bSkipVideos = m_checkbox_skipvideos->isChecked();
   settings.bVerticalSplitscreen = m_checkbox_verticalsplit->isChecked();
+  settings.bFixButtonCodes = m_checkbox_fixbuttoncodes->isChecked();
   //Config::SetBaseOrCurrent(Config::MAIN_CPU_THREAD, m_checkbox_dualcore->isChecked());
 
   settings.SaveSettings();

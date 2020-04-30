@@ -9,6 +9,7 @@ struct TSConfig
 {
   bool bSkipVideos = false;
   bool bVerticalSplitscreen = false;
+  bool bFixButtonCodes = true;
 
   void LoadDefaults();
 

@@ -49,6 +49,7 @@ void TSConfig::SaveGeneralSettings(IniFile& ini)
   // General
   general->Set("SkipVideos", bSkipVideos);
   general->Set("VerticalSplit", bVerticalSplitscreen);
+  general->Set("FixButtonCodes", bFixButtonCodes);
 }
 
 void TSConfig::LoadSettings()
@@ -68,10 +69,12 @@ void TSConfig::LoadGeneralSettings(IniFile& ini)
 
   general->Get("SkipVideos", &bSkipVideos, false);
   general->Get("VerticalSplit", &bVerticalSplitscreen, false);
+  general->Get("FixButtonCodes", &bFixButtonCodes, true);
 }
 
 void TSConfig::LoadDefaults()
 {
   bSkipVideos = false;
   bVerticalSplitscreen = false;
+  bFixButtonCodes = true;
 }

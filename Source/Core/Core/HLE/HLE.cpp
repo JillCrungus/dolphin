@@ -44,7 +44,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 24> OSPatches{{
+constexpr std::array<SPatch, 25> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -83,8 +83,10 @@ constexpr std::array<SPatch, 24> OSPatches{{
    // {"Last_Stand_Horror_ChrSet_Ptr", (void*)HLE_TS3::test_set, HookType::Replace, HookFlag::Fixed}
 
   {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed},
-  {"WindowSetDebug", HLE_TS3::HLE_DebugWindowSet, HookType::Start, HookFlag::Fixed}
-
+  //{"DebugButtonCheat", HLE_TS3::HLE_DebugButtonCheat, HookType::None, HookFlag::Fixed},
+  {"UnlockAllCheatDebug", HLE_TS3::HLE_DebugUnlockAll, HookType::Start, HookFlag::Fixed},
+  //{"DebugCheatCheck", HLE_TS3::HLE_DebugCheatCheck, HookType::None, HookFlag::Fixed},
+  {"FixButtonCheats", HLE_TS3::HLE_ButtonCheatInputCheck, HookType::Replace, HookFlag::Fixed}
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -125,6 +127,12 @@ public:
   {
     INFO_LOG(TS3, "TSFPHack_MemManager: Writing u32 %u to location %08X in extended memory", val,
              writeHead);
+    if (!PowerPC::HostIsRAMAddress(writeHead))
+    {
+      INFO_LOG(TS3,
+               "TSFPHack_MemManager: %08X is not regarded a valid RAM address by HostIsRAMAddress!",
+               writeHead);
+    }
     PowerPC::HostWrite_U32(val, writeHead);
     writeHead += sizeof(u32);
     INFO_LOG(TS3, "TSFPHack_MemManager: New writehead is 0x%08X", writeHead);
@@ -147,7 +155,6 @@ public:
     writeHead += sizeof(float);
     INFO_LOG(TS3, "TSFPHack_MemManager: New writehead is 0x%08X", writeHead);
   }
-
   u32 GetPos() { return writeHead; }
 };
 
@@ -155,15 +162,22 @@ void PatchTS3Functions()
 {
   // Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
   // Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
-  Patch(HLE_TS3::SET_NEXT_MUSIC_TRACK_ADDRESS, "SetNextMusicTrack");
-
-  //Patch(0x8001c710, "WindowSetDebug");
+  //Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "DebugButtonCheat");
+  Patch(HLE_TS3::UNLOCK_ALL_FUNC, "UnlockAllCheatDebug");
 
   if (TSConfig::GetInstance().bSkipVideos)
   {
     INFO_LOG(TS3, "User has requested video skip hack");
     Patch(HLE_TS3::PLAY_THP_ADDRESS, "SkipVideoFiles");
   }
+
+  if (TSConfig::GetInstance().bFixButtonCodes)
+  {
+    INFO_LOG(TS3, "Applying button code fix!");
+    Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "FixButtonCheats");
+  }
+
+  // HostWrite_String("Hello Discord!", HLE_TS3::TEST_STRING);
 
   if (TSConfig::GetInstance().bVerticalSplitscreen)
   {
@@ -174,7 +188,7 @@ void PatchTS3Functions()
 
     // Player 2
     PowerPC::HostWrite_U32(0x38a00000, 0x80259470);  // li         r5,0x0
-    //PowerPC::HostWrite_U32(0x38deffff, 0x80259474);  // subi       r6,Half_screen_width,0x1
+    // PowerPC::HostWrite_U32(0x38deffff, 0x80259474);  // subi       r6,Half_screen_width,0x1
     PowerPC::HostWrite_U32(0x7fc4f378, 0x80259478);  // or r4,half_screen_width,half_screen_width
   }
 
