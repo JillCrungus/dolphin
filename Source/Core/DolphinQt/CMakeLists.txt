@@ -1,5 +1,9 @@
 if (NOT Qt5_DIR AND MSVC)
-set(Qt5_DIR "${CMAKE_SOURCE_DIR}/Externals/Qt/Qt5.13.1/5.13.1/msvc2017_64/lib/cmake/Qt5")
+  if(_M_ARM_64)
+    set(Qt5_DIR "${CMAKE_SOURCE_DIR}/Externals/Qt/Qt5.14.1/msvc2019_arm64/lib/cmake/Qt5")
+  else()
+    set(Qt5_DIR "${CMAKE_SOURCE_DIR}/Externals/Qt/Qt5.14.1/msvc2019_64/lib/cmake/Qt5")
+  endif()
 endif()
 
 find_package(Qt5 5.9 REQUIRED COMPONENTS Gui Widgets)
@@ -14,6 +18,8 @@ add_executable(dolphin-emu
   AboutDialog.h
   CheatsManager.cpp
   CheatsManager.h
+  ConvertDialog.cpp
+  ConvertDialog.h
   DiscordHandler.cpp
   DiscordHandler.h
   DiscordJoinRequestDialog.cpp
@@ -140,6 +146,10 @@ add_executable(dolphin-emu
   Config/Mapping/MappingWindow.h
   Config/Mapping/WiimoteEmuExtension.cpp
   Config/Mapping/WiimoteEmuExtension.h
+  Config/Mapping/WiimoteEmuExtensionMotionInput.cpp
+  Config/Mapping/WiimoteEmuExtensionMotionInput.h
+  Config/Mapping/WiimoteEmuExtensionMotionSimulation.cpp
+  Config/Mapping/WiimoteEmuExtensionMotionSimulation.h
   Config/Mapping/WiimoteEmuGeneral.cpp
   Config/Mapping/WiimoteEmuGeneral.h
   Config/Mapping/WiimoteEmuMotionControl.cpp
@@ -170,6 +180,8 @@ add_executable(dolphin-emu
   Debugger/MemoryViewWidget.h
   Debugger/MemoryWidget.cpp
   Debugger/MemoryWidget.h
+  Debugger/NetworkWidget.cpp
+  Debugger/NetworkWidget.h
   Debugger/NewBreakpointDialog.cpp
   Debugger/NewBreakpointDialog.h
   Debugger/PatchInstructionDialog.cpp
@@ -190,6 +202,8 @@ add_executable(dolphin-emu
   GameList/GridProxyModel.h
   GameList/ListProxyModel.cpp
   GameList/ListProxyModel.h
+  GCMemcardCreateNewDialog.cpp
+  GCMemcardCreateNewDialog.h
   GCMemcardManager.cpp
   GCMemcardManager.h
   QtUtils/BlockUserInputFilter.cpp
@@ -218,6 +232,7 @@ add_executable(dolphin-emu
   QtUtils/FlowLayout.h
   QtUtils/ModalMessageBox.cpp
   QtUtils/ModalMessageBox.h
+  QtUtils/ParallelProgressDialog.h
   QtUtils/ImageConverter.cpp
   QtUtils/ImageConverter.h
   QtUtils/WindowActivationEventFilter.cpp
@@ -289,6 +304,14 @@ PRIVATE
   uicommon
   imgui
 )
+
+if (WIN32)
+  target_link_libraries(dolphin-emu
+  PRIVATE
+	  gdi32.lib
+		shell32.lib
+  )
+endif()
 
 if(WIN32)
   target_sources(dolphin-emu PRIVATE DolphinQt.manifest DolphinQt.rc)
@@ -435,6 +458,11 @@ if(APPLE)
   # Update library references to make the bundle portable
   include(DolphinPostprocessBundle)
   dolphin_postprocess_bundle(dolphin-emu)
+  # Fix rpath
+  add_custom_command(TARGET dolphin-emu 
+    POST_BUILD COMMAND 
+    ${CMAKE_INSTALL_NAME_TOOL} -add_rpath "@executable_path/../Frameworks/"
+    $<TARGET_FILE:dolphin-emu>)
 else()
   install(TARGETS dolphin-emu RUNTIME DESTINATION ${bindir})
 endif()
