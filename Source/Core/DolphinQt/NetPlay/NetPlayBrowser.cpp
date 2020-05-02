@@ -61,6 +61,7 @@ void NetPlayBrowser::CreateWidgets()
   auto* layout = new QVBoxLayout;
 
   m_table_widget = new QTableWidget;
+  m_table_widget->setTabKeyNavigation(false);
 
   m_table_widget->setSelectionBehavior(QAbstractItemView::SelectRows);
   m_table_widget->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -85,6 +86,7 @@ void NetPlayBrowser::CreateWidgets()
   m_edit_name = new QLineEdit;
   m_edit_game_id = new QLineEdit;
   m_check_hide_incompatible = new QCheckBox(tr("Hide Incompatible Sessions"));
+  m_check_hide_ingame = new QCheckBox(tr("Hide In-Game Sessions"));
 
   m_check_hide_incompatible->setChecked(true);
 
@@ -109,6 +111,7 @@ void NetPlayBrowser::CreateWidgets()
   filter_layout->addWidget(m_radio_private, 3, 3);
   filter_layout->addItem(new QSpacerItem(4, 1, QSizePolicy::Expanding), 3, 4);
   filter_layout->addWidget(m_check_hide_incompatible, 4, 1, 1, -1);
+  filter_layout->addWidget(m_check_hide_ingame, 5, 1, 1, -1);
 
   layout->addWidget(m_table_widget);
   layout->addWidget(filter_box);
@@ -123,8 +126,8 @@ void NetPlayBrowser::CreateWidgets()
 
 void NetPlayBrowser::ConnectWidgets()
 {
-  connect(m_region_combo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
-          this, &NetPlayBrowser::Refresh);
+  connect(m_region_combo, qOverload<int>(&QComboBox::currentIndexChanged), this,
+          &NetPlayBrowser::Refresh);
 
   connect(m_button_box, &QDialogButtonBox::accepted, this, &NetPlayBrowser::accept);
   connect(m_button_box, &QDialogButtonBox::rejected, this, &NetPlayBrowser::reject);
@@ -133,6 +136,7 @@ void NetPlayBrowser::ConnectWidgets()
   connect(m_radio_all, &QRadioButton::toggled, this, &NetPlayBrowser::Refresh);
   connect(m_radio_private, &QRadioButton::toggled, this, &NetPlayBrowser::Refresh);
   connect(m_check_hide_incompatible, &QRadioButton::toggled, this, &NetPlayBrowser::Refresh);
+  connect(m_check_hide_ingame, &QRadioButton::toggled, this, &NetPlayBrowser::Refresh);
 
   connect(m_edit_name, &QLineEdit::textChanged, this, &NetPlayBrowser::Refresh);
   connect(m_edit_game_id, &QLineEdit::textChanged, this, &NetPlayBrowser::Refresh);
@@ -160,6 +164,9 @@ void NetPlayBrowser::Refresh()
 
   if (m_region_combo->currentIndex() != 0)
     filters["region"] = m_region_combo->currentData().toString().toStdString();
+
+  if (m_check_hide_ingame->isChecked())
+    filters["in_game"] = "0";
 
   std::unique_lock<std::mutex> lock(m_refresh_filters_mutex);
   m_refresh_filters = std::move(filters);

@@ -236,10 +236,6 @@ void Wiimote::HandleRequestStatus(const OutputReportRequestStatus&)
   // Update status struct
   m_status.extension = m_extension_port.IsDeviceConnected();
 
-  // Based on testing, old WiiLi.org docs, and WiiUse library:
-  // Max battery level seems to be 0xc8 (decimal 200)
-  constexpr u8 MAX_BATTERY_LEVEL = 0xc8;
-
   m_status.battery = u8(std::lround(m_battery_setting.GetValue() / 100 * MAX_BATTERY_LEVEL));
 
   if (Core::WantsDeterminism())
@@ -592,8 +588,11 @@ void Wiimote::DoState(PointerWrap& p)
   // Dynamics
   p.Do(m_swing_state);
   p.Do(m_tilt_state);
-  p.Do(m_cursor_state);
+  p.Do(m_point_state);
   p.Do(m_shake_state);
+
+  // We'll consider the IMU state part of the user's physical controller state and not sync it.
+  // (m_imu_cursor_state)
 
   p.DoMarker("Wiimote");
 }
