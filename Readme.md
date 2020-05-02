@@ -1,3 +1,5 @@
+[![Build status](https://ci.appveyor.com/api/projects/status/54g9226kywwy77ww/branch/tsfp_hacks?svg=true)](https://ci.appveyor.com/project/JillCrungus/dolphin-tsfphooks/branch/tsfp_hacks)
+
 # Dolphin - A GameCube and Wii Emulator
 
 [Homepage](https://dolphin-emu.org/) | [Project Site](https://github.com/dolphin-emu/dolphin) | [Forums](https://forums.dolphin-emu.org/) | [Wiki](https://wiki.dolphin-emu.org/) | [Issue Tracker](https://bugs.dolphin-emu.org/projects/emulator/issues) | [Coding Style](https://github.com/dolphin-emu/dolphin/blob/master/Contributing.md) | [Transifex Page](https://www.transifex.com/projects/p/dolphin-emu/)
