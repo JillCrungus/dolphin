@@ -1,4 +1,4 @@
-[![Build status](https://ci.appveyor.com/api/projects/status/54g9226kywwy77ww/branch/tsfp_hacks?svg=true)](https://ci.appveyor.com/project/JillCrungus/dolphin-tsfphooks/branch/tsfp_hacks)
+
 
 # Dolphin - A GameCube and Wii Emulator
 
