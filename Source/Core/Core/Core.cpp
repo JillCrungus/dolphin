@@ -4,16 +4,16 @@
 
 #include "Core/Core.h"
 
+#include <algorithm>
 #include <atomic>
 #include <cstring>
-#include <locale>
 #include <mutex>
 #include <queue>
 #include <utility>
 #include <variant>
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
-#include <fmt/time.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -31,6 +31,7 @@
 #include "Common/MemoryUtil.h"
 #include "Common/MsgHandler.h"
 #include "Common/ScopeGuard.h"
+#include "Common/StringUtil.h"
 #include "Common/Thread.h"
 #include "Common/Timer.h"
 #include "Common/Version.h"
@@ -77,6 +78,7 @@
 #include "InputCommon/ControllerInterface/ControllerInterface.h"
 #include "InputCommon/GCAdapter.h"
 
+#include "VideoCommon/AsyncRequests.h"
 #include "VideoCommon/Fifo.h"
 #include "VideoCommon/OnScreenDisplay.h"
 #include "VideoCommon/RenderBase.h"
@@ -104,6 +106,7 @@ static std::thread s_cpu_thread;
 static bool s_request_refresh_info = false;
 static bool s_is_throttler_temp_disabled = false;
 static bool s_frame_step = false;
+static std::atomic<bool> s_stop_frame_step;
 
 #ifdef USE_MEMORYWATCHER
 static std::unique_ptr<MemoryWatcher> s_memory_watcher;
@@ -161,11 +164,8 @@ void DisplayMessage(std::string message, int time_in_ms)
     return;
 
   // Actually displaying non-ASCII could cause things to go pear-shaped
-  for (const char& c : message)
-  {
-    if (!std::isprint(c, std::locale::classic()))
-      return;
-  }
+  if (!std::all_of(message.begin(), message.end(), IsPrintableCharacter))
+    return;
 
   Host_UpdateTitle(message);
   OSD::AddMessage(std::move(message), time_in_ms);
@@ -236,12 +236,13 @@ bool Init(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
   Host_UpdateMainFrame();  // Disable any menus or buttons at boot
 
   // Issue any API calls which must occur on the main thread for the graphics backend.
-  g_video_backend->PrepareWindow(wsi);
+  WindowSystemInfo prepared_wsi(wsi);
+  g_video_backend->PrepareWindow(prepared_wsi);
 
   // Start the emu thread
   s_done_booting.Reset();
   s_is_booting.Set();
-  s_emu_thread = std::thread(EmuThread, std::move(boot), wsi);
+  s_emu_thread = std::thread(EmuThread, std::move(boot), prepared_wsi);
   return true;
 }
 
@@ -290,17 +291,7 @@ void Stop()  // - Hammertime!
 
     g_video_backend->Video_ExitLoop();
   }
-
-  if (_CoreParameter.bWii)
-    Wiimote::ResetAllWiimotes();
-
-  ResetRumble();
-
   TSConfig::GetInstance().SetLevel(-1);
-
-#ifdef USE_MEMORYWATCHER
-  s_memory_watcher.reset();
-#endif
 }
 
 void DeclareAsCPUThread()
@@ -377,6 +368,10 @@ static void CpuThread(const std::optional<std::string>& savestate_path, bool del
   // Enter CPU run loop. When we leave it - we are done.
   CPU::Run();
 
+#ifdef USE_MEMORYWATCHER
+  s_memory_watcher.reset();
+#endif
+
   s_is_started = false;
 
   if (_CoreParameter.bFastmem)
@@ -444,7 +439,7 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
   s_frame_step = false;
 
   Movie::Init(*boot);
-  Common::ScopeGuard movie_guard{Movie::Shutdown};
+  Common::ScopeGuard movie_guard{&Movie::Shutdown};
 
   HW::Init();
 
@@ -479,6 +474,11 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
     return;
   }
   Common::ScopeGuard video_guard{[] { g_video_backend->Shutdown(); }};
+
+  // Render a single frame without anything on it to clear the screen.
+  // This avoids the game list being displayed while the core is finishing initializing.
+  g_renderer->BeginUIFrame();
+  g_renderer->EndUIFrame();
 
   if (cpu_info.HTT)
     SConfig::GetInstance().bDSPThread = cpu_info.num_cores > 4;
@@ -537,7 +537,12 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
       return;
 
     if (init_wiimotes)
+    {
+      Wiimote::ResetAllWiimotes();
       Wiimote::Shutdown();
+    }
+
+    ResetRumble();
 
     Keyboard::Shutdown();
     Pad::Shutdown();
@@ -545,7 +550,7 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
   }};
 
   AudioCommon::InitSoundStream();
-  Common::ScopeGuard audio_guard{AudioCommon::ShutdownSoundStream};
+  Common::ScopeGuard audio_guard{&AudioCommon::ShutdownSoundStream};
 
   // The hardware is initialized.
   s_hardware_initialized = true;
@@ -571,7 +576,7 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
   // Initialise Wii filesystem contents.
   // This is done here after Boot and not in HW to ensure that we operate
   // with the correct title context since save copying requires title directories to exist.
-  Common::ScopeGuard wiifs_guard{Core::CleanUpWiiFileSystemContents};
+  Common::ScopeGuard wiifs_guard{&Core::CleanUpWiiFileSystemContents};
   if (SConfig::GetInstance().bWii)
     Core::InitializeWiiFileSystemContents();
   else
@@ -858,23 +863,33 @@ void VideoThrottle()
 
 // --- Callbacks for backends / engine ---
 
-// Should be called from GPU thread when a frame is drawn
-void Callback_VideoCopiedToXFB(bool video_update)
+// Called from Renderer::Swap (GPU thread) when a new (non-duplicate)
+// frame is presented to the host screen
+void Callback_FramePresented()
 {
-  if (video_update)
-    s_drawn_frame++;
+  s_drawn_frame++;
+  s_stop_frame_step.store(true);
 }
 
-// Called at field boundaries in `VideoInterface::Update()`
-void FrameUpdate()
+// Called from VideoInterface::Update (CPU thread) at emulated field boundaries
+void Callback_NewField()
 {
-  Movie::FrameUpdate();
   if (s_frame_step)
   {
-    s_frame_step = false;
-    CPU::Break();
-    if (s_on_state_changed_callback)
-      s_on_state_changed_callback(Core::GetState());
+    // To ensure that s_stop_frame_step is up to date, wait for the GPU thread queue to empty,
+    // since it is may contain a swap event (which will call Callback_FramePresented). This hurts
+    // the performance a little, but luckily, performance matters less when using frame stepping.
+    AsyncRequests::GetInstance()->WaitForEmptyQueue();
+
+    // Only stop the frame stepping if a new frame was displayed
+    // (as opposed to the previous frame being displayed for another frame).
+    if (s_stop_frame_step.load())
+    {
+      s_frame_step = false;
+      CPU::Break();
+      if (s_on_state_changed_callback)
+        s_on_state_changed_callback(Core::GetState());
+    }
   }
 }
 
@@ -1045,6 +1060,7 @@ void DoFrameStep()
   if (GetState() == State::Paused)
   {
     // if already paused, frame advance for 1 frame
+    s_stop_frame_step = false;
     s_frame_step = true;
     RequestRefreshInfo();
     SetState(State::Running);
@@ -1056,11 +1072,10 @@ void DoFrameStep()
   }
 }
 
-void UpdateInputGate()
+void UpdateInputGate(bool require_focus)
 {
-  ControlReference::SetInputGate(
-      (SConfig::GetInstance().m_BackgroundInput || Host_RendererHasFocus()) &&
-      !Host_UIBlocksControllerState());
+  ControlReference::SetInputGate((!require_focus || Host_RendererHasFocus()) &&
+                                 !Host_UIBlocksControllerState());
 }
 
 }  // namespace Core

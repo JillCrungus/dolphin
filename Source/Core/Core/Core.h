@@ -25,8 +25,8 @@ namespace Core
 bool GetIsThrottlerTempDisabled();
 void SetIsThrottlerTempDisabled(bool disable);
 
-void Callback_VideoCopiedToXFB(bool video_update);
-void FrameUpdate();
+void Callback_FramePresented();
+void Callback_NewField();
 
 enum class State
 {
@@ -112,6 +112,6 @@ void HostDispatchJobs();
 
 void DoFrameStep();
 
-void UpdateInputGate();
+void UpdateInputGate(bool require_focus);
 
 }  // namespace Core

@@ -33,8 +33,6 @@
 
 namespace IOS::HLE
 {
-constexpr int WII_SOCKET_FD_MAX = 24;
-
 char* WiiSockMan::DecodeError(s32 ErrorCode)
 {
 #ifdef _WIN32
@@ -170,6 +168,12 @@ s32 WiiSocket::CloseFd()
     ReturnValue = WiiSockMan::GetNetErrorCode(EITHER(WSAENOTSOCK, EBADF), "CloseFd", false);
   }
   fd = -1;
+
+  for (auto it = pending_sockops.begin(); it != pending_sockops.end();)
+  {
+    GetIOS()->EnqueueIPCReply(it->request, -SO_ENOTCONN);
+    it = pending_sockops.erase(it);
+  }
   return ReturnValue;
 }
 
@@ -319,7 +323,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
       if (it->is_ssl)
       {
         int sslID = Memory::Read_U32(BufferOut) - 1;
-        if (SSLID_VALID(sslID))
+        if (IOS::HLE::Device::IsSSLIDValid(sslID))
         {
           switch (it->ssl_type)
           {

@@ -54,6 +54,7 @@ extern const ConfigInfo<bool> GFX_FAST_DEPTH_CALC;
 extern const ConfigInfo<u32> GFX_MSAA;
 extern const ConfigInfo<bool> GFX_SSAA;
 extern const ConfigInfo<int> GFX_EFB_SCALE;
+extern const ConfigInfo<int> GFX_MAX_EFB_SCALE;
 extern const ConfigInfo<bool> GFX_TEXFMT_OVERLAY_ENABLE;
 extern const ConfigInfo<bool> GFX_TEXFMT_OVERLAY_CENTER;
 extern const ConfigInfo<bool> GFX_ENABLE_WIREFRAME;
@@ -99,6 +100,10 @@ extern const ConfigInfo<int> GFX_STEREO_CONVERGENCE;
 extern const ConfigInfo<bool> GFX_STEREO_EFB_MONO_DEPTH;
 extern const ConfigInfo<int> GFX_STEREO_DEPTH_PERCENTAGE;
 
+// Stereoscopy pseudo-limits for consistent behavior between enhancements tab and hotkeys.
+static constexpr int GFX_STEREO_DEPTH_MAXIMUM = 100;
+static constexpr int GFX_STEREO_CONVERGENCE_MAXIMUM = 200;
+
 // Graphics.Hacks
 
 extern const ConfigInfo<bool> GFX_HACK_EFB_ACCESS_ENABLE;
@@ -111,6 +116,7 @@ extern const ConfigInfo<bool> GFX_HACK_SKIP_XFB_COPY_TO_RAM;
 extern const ConfigInfo<bool> GFX_HACK_DISABLE_COPY_TO_VRAM;
 extern const ConfigInfo<bool> GFX_HACK_DEFER_EFB_COPIES;
 extern const ConfigInfo<bool> GFX_HACK_IMMEDIATE_XFB;
+extern const ConfigInfo<bool> GFX_HACK_SKIP_DUPLICATE_XFBS;
 extern const ConfigInfo<bool> GFX_HACK_COPY_EFB_SCALED;
 extern const ConfigInfo<bool> GFX_HACK_EFB_EMULATE_FORMAT_CHANGES;
 extern const ConfigInfo<bool> GFX_HACK_VERTEX_ROUDING;

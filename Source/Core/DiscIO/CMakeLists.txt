@@ -23,6 +23,8 @@ add_library(discio
   Filesystem.h
   NANDImporter.cpp
   NANDImporter.h
+  ScrubbedBlob.cpp
+  ScrubbedBlob.h
   TGCBlob.cpp
   TGCBlob.h
   Volume.cpp
@@ -39,6 +41,8 @@ add_library(discio
   VolumeWii.h
   WbfsBlob.cpp
   WbfsBlob.h
+  WiiEncryptionCache.cpp
+  WiiEncryptionCache.h
   WiiSaveBanner.cpp
   WiiSaveBanner.h
 )
