@@ -1,7 +1,9 @@
 #pragma once
 
+#include <string>
 #include "Common/Common.h"
 #include "Common/CommonTypes.h"
+#include "UICommon/DiscordPresence.h"
 
 class IniFile;
 
@@ -24,12 +26,21 @@ struct TSConfig
   // Load settings
   void LoadSettings();
 
+  // Util
+  void SetLevel( u32 newlevel )
+  {
+    m_current_level = newlevel;
+    Discord::UpdateDiscordPresence();
+  }
+  u32 GetLevelID();
+  std::string GetDefaultLevelNameForID(u32 id);
+
   // Return the permanent and somewhat globally used instance of this struct
   static TSConfig& GetInstance() { return (*m_Instance); }
   static void Init();
   static void Shutdown();
 
-  private:
+private:
   TSConfig();
   ~TSConfig();
 
@@ -37,4 +48,6 @@ struct TSConfig
   void LoadGeneralSettings(IniFile& ini);
 
   static TSConfig* m_Instance;
+
+  u32 m_current_level;
 };
