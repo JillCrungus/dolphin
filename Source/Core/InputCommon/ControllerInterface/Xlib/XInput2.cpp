@@ -131,8 +131,6 @@ void KeyboardMouse::SelectEventsForDevice(Window window, XIEventMask* mask, int 
 KeyboardMouse::KeyboardMouse(Window window, int opcode, int pointer, int keyboard)
     : m_window(window), xi_opcode(opcode), pointer_deviceid(pointer), keyboard_deviceid(keyboard)
 {
-  memset(&m_state, 0, sizeof(m_state));
-
   // The cool thing about each KeyboardMouse object having its own Display
   // is that each one gets its own separate copy of the X11 event stream,
   // which it can individually filter to get just the events it's interested
@@ -212,9 +210,11 @@ void KeyboardMouse::UpdateCursor()
   XWindowAttributes win_attribs;
   XGetWindowAttributes(m_display, m_window, &win_attribs);
 
+  const auto window_scale = g_controller_interface.GetWindowInputScale();
+
   // the mouse position as a range from -1 to 1
-  m_state.cursor.x = win_x / (float)win_attribs.width * 2 - 1;
-  m_state.cursor.y = win_y / (float)win_attribs.height * 2 - 1;
+  m_state.cursor.x = (win_x / win_attribs.width * 2 - 1) * window_scale.x;
+  m_state.cursor.y = (win_y / win_attribs.height * 2 - 1) * window_scale.y;
 }
 
 void KeyboardMouse::UpdateInput()

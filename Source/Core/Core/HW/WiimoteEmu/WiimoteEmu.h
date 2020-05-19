@@ -145,8 +145,6 @@ private:
   // This is the region exposed over bluetooth:
   static constexpr int EEPROM_FREE_SIZE = 0x1700;
 
-  static constexpr double BUTTON_THRESHOLD = 0.5;
-
   void UpdateButtonsStatus();
 
   // Returns simulated accelerometer data in m/s^2.
@@ -159,7 +157,8 @@ private:
   // Returns the transformation of the world around the wiimote.
   // Used for simulating camera data and for rotating acceleration data.
   // Does not include orientation transformations.
-  Common::Matrix44 GetTransformation(Common::Vec3 extra_rotation = {}) const;
+  Common::Matrix44
+  GetTransformation(const Common::Matrix33& extra_rotation = Common::Matrix33::Identity()) const;
 
   // Returns the world rotation from the effects of sideways/upright settings.
   Common::Matrix33 GetOrientation() const;
@@ -254,7 +253,6 @@ private:
   ControllerEmu::Tilt* m_tilt;
   ControllerEmu::Force* m_swing;
   ControllerEmu::ControlGroup* m_rumble;
-  ControllerEmu::Output* m_motor;
   ControllerEmu::Attachments* m_attachments;
   ControllerEmu::ControlGroup* m_options;
   ControllerEmu::ModifySettingsButton* m_hotkeys;
@@ -298,8 +296,9 @@ private:
   // Dynamics:
   MotionState m_swing_state;
   RotationalState m_tilt_state;
-  MotionState m_cursor_state;
+  MotionState m_point_state;
   PositionalState m_shake_state;
-  std::optional<RotationalState> m_imu_cursor_state;
+
+  IMUCursorState m_imu_cursor_state;
 };
 }  // namespace WiimoteEmu

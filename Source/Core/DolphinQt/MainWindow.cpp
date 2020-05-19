@@ -12,7 +12,6 @@
 #include <QFileInfo>
 #include <QIcon>
 #include <QMimeData>
-#include <QProgressDialog>
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QWindow>
@@ -73,6 +72,7 @@
 #include "DolphinQt/Debugger/CodeWidget.h"
 #include "DolphinQt/Debugger/JITWidget.h"
 #include "DolphinQt/Debugger/MemoryWidget.h"
+#include "DolphinQt/Debugger/NetworkWidget.h"
 #include "DolphinQt/Debugger/RegisterWidget.h"
 #include "DolphinQt/Debugger/WatchWidget.h"
 #include "DolphinQt/DiscordHandler.h"
@@ -88,6 +88,7 @@
 #include "DolphinQt/NetPlay/NetPlaySetupDialog.h"
 #include "DolphinQt/QtUtils/FileOpenEventFilter.h"
 #include "DolphinQt/QtUtils/ModalMessageBox.h"
+#include "DolphinQt/QtUtils/ParallelProgressDialog.h"
 #include "DolphinQt/QtUtils/QueueOnObject.h"
 #include "DolphinQt/QtUtils/RunOnObject.h"
 #include "DolphinQt/QtUtils/WindowActivationEventFilter.h"
@@ -116,6 +117,8 @@
 
 #if defined(HAVE_XRANDR) && HAVE_XRANDR
 #include "UICommon/X11Utils.h"
+// This #define within X11/X.h conflicts with our WiimoteSource enum.
+#undef None
 #endif
 
 #if defined(__unix__) || defined(__unix) || defined(__APPLE__)
@@ -161,14 +164,16 @@ static WindowSystemInfo GetWindowSystemInfo(QWindow* window)
 
   // Our Win32 Qt external doesn't have the private API.
 #if defined(WIN32) || defined(__APPLE__)
-  wsi.render_surface = window ? reinterpret_cast<void*>(window->winId()) : nullptr;
+  wsi.render_window = window ? reinterpret_cast<void*>(window->winId()) : nullptr;
+  wsi.render_surface = wsi.render_window;
 #else
   QPlatformNativeInterface* pni = QGuiApplication::platformNativeInterface();
   wsi.display_connection = pni->nativeResourceForWindow("display", window);
   if (wsi.type == WindowSystemType::Wayland)
-    wsi.render_surface = window ? pni->nativeResourceForWindow("surface", window) : nullptr;
+    wsi.render_window = window ? pni->nativeResourceForWindow("surface", window) : nullptr;
   else
-    wsi.render_surface = window ? reinterpret_cast<void*>(window->winId()) : nullptr;
+    wsi.render_window = window ? reinterpret_cast<void*>(window->winId()) : nullptr;
+  wsi.render_surface = wsi.render_window;
 #endif
   wsi.render_surface_scale = window ? static_cast<float>(window->devicePixelRatio()) : 1.0f;
 
@@ -386,6 +391,7 @@ void MainWindow::CreateComponents()
   m_log_widget = new LogWidget(this);
   m_log_config_widget = new LogConfigWidget(this);
   m_memory_widget = new MemoryWidget(this);
+  m_network_widget = new NetworkWidget(this);
   m_register_widget = new RegisterWidget(this);
   m_watch_widget = new WatchWidget(this);
   m_breakpoint_widget = new BreakpointWidget(this);
@@ -613,8 +619,6 @@ void MainWindow::ConnectRenderWidget()
 
 void MainWindow::ConnectHost()
 {
-  connect(Host::GetInstance(), &Host::UpdateProgressDialog, this,
-          &MainWindow::OnUpdateProgressDialog);
   connect(Host::GetInstance(), &Host::RequestStop, this, &MainWindow::RequestStop);
 }
 
@@ -643,6 +647,7 @@ void MainWindow::ConnectStack()
   addDockWidget(Qt::LeftDockWidgetArea, m_watch_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_breakpoint_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_memory_widget);
+  addDockWidget(Qt::LeftDockWidgetArea, m_network_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_jit_widget);
 
   tabifyDockWidget(m_log_widget, m_log_config_widget);
@@ -651,6 +656,7 @@ void MainWindow::ConnectStack()
   tabifyDockWidget(m_log_widget, m_watch_widget);
   tabifyDockWidget(m_log_widget, m_breakpoint_widget);
   tabifyDockWidget(m_log_widget, m_memory_widget);
+  tabifyDockWidget(m_log_widget, m_network_widget);
   tabifyDockWidget(m_log_widget, m_jit_widget);
 }
 
@@ -688,7 +694,7 @@ void MainWindow::ChangeDisc()
 
 void MainWindow::EjectDisc()
 {
-  Core::RunAsCPUThread(DVDInterface::EjectDisc);
+  Core::RunAsCPUThread([] { DVDInterface::EjectDisc(DVDInterface::EjectCause::User); });
 }
 
 void MainWindow::Open()
@@ -1264,8 +1270,8 @@ void MainWindow::SetStateSlot(int slot)
 void MainWindow::PerformOnlineUpdate(const std::string& region)
 {
   WiiUpdate::PerformOnlineUpdate(region, this);
-  // Since the update may have installed a newer system menu, refresh the tools menu.
-  m_menu_bar->UpdateToolsMenu(false);
+  // Since the update may have installed a newer system menu, trigger a refresh.
+  Settings::Instance().NANDRefresh();
 }
 
 void MainWindow::BootWiiSystemMenu()
@@ -1357,9 +1363,6 @@ bool MainWindow::NetPlayJoin()
     return false;
   }
 
-  if (server != nullptr)
-    server->SetNetPlayUI(m_netplay_dialog);
-
   m_netplay_setup_dialog->close();
   m_netplay_dialog->show(nickname, is_traversal);
 
@@ -1397,7 +1400,7 @@ bool MainWindow::NetPlayHost(const QString& game_id)
 
   // Create Server
   Settings::Instance().ResetNetPlayServer(new NetPlay::NetPlayServer(
-      host_port, use_upnp,
+      host_port, use_upnp, m_netplay_dialog,
       NetPlay::NetTraversalConfig{is_traversal, traversal_host, traversal_port}));
 
   if (!Settings::Instance().GetNetPlayServer()->is_connected)
@@ -1532,23 +1535,21 @@ void MainWindow::OnImportNANDBackup()
   if (file.isEmpty())
     return;
 
-  QProgressDialog* dialog = new QProgressDialog(this);
-  dialog->setMinimum(0);
-  dialog->setMaximum(0);
-  dialog->setLabelText(tr("Importing NAND backup"));
-  dialog->setCancelButton(nullptr);
+  ParallelProgressDialog dialog(this);
+  dialog.GetRaw()->setMinimum(0);
+  dialog.GetRaw()->setMaximum(0);
+  dialog.GetRaw()->setLabelText(tr("Importing NAND backup"));
+  dialog.GetRaw()->setCancelButton(nullptr);
 
   auto beginning = QDateTime::currentDateTime().toMSecsSinceEpoch();
 
-  auto result = std::async(std::launch::async, [&] {
+  std::future<void> result = std::async(std::launch::async, [&] {
     DiscIO::NANDImporter().ImportNANDBin(
         file.toStdString(),
         [&dialog, beginning] {
-          QueueOnObject(dialog, [&dialog, beginning] {
-            dialog->setLabelText(
-                tr("Importing NAND backup\n Time elapsed: %1s")
-                    .arg((QDateTime::currentDateTime().toMSecsSinceEpoch() - beginning) / 1000));
-          });
+          dialog.SetLabelText(
+              tr("Importing NAND backup\n Time elapsed: %1s")
+                  .arg((QDateTime::currentDateTime().toMSecsSinceEpoch() - beginning) / 1000));
         },
         [this] {
           std::optional<std::string> keys_file = RunOnObject(this, [this] {
@@ -1562,10 +1563,10 @@ void MainWindow::OnImportNANDBackup()
             return *keys_file;
           return std::string("");
         });
-    QueueOnObject(dialog, &QProgressDialog::close);
+    dialog.Reset();
   });
 
-  dialog->exec();
+  dialog.GetRaw()->exec();
 
   result.wait();
 
@@ -1616,7 +1617,7 @@ void MainWindow::OnStartRecording()
     if (SerialInterface::SIDevice_IsGCController(SConfig::GetInstance().m_SIDevice[i]))
       controllers |= (1 << i);
 
-    if (g_wiimote_sources[i] != WIIMOTE_SRC_NONE)
+    if (WiimoteCommon::GetSource(i) != WiimoteSource::None)
       controllers |= (1 << (i + 4));
   }
 
@@ -1683,7 +1684,7 @@ void MainWindow::ShowTASInput()
 
   for (int i = 0; i < num_wii_controllers; i++)
   {
-    if (g_wiimote_sources[i] == WIIMOTE_SRC_EMU &&
+    if (WiimoteCommon::GetSource(i) == WiimoteSource::Emulated &&
         (!Core::IsRunning() || SConfig::GetInstance().bWii))
     {
       m_wii_tas_input_windows[i]->show();
@@ -1723,28 +1724,6 @@ void MainWindow::ShowResourcePackManager()
 void MainWindow::ShowCheatsManager()
 {
   m_cheats_manager->show();
-}
-
-void MainWindow::OnUpdateProgressDialog(QString title, int progress, int total)
-{
-  if (!m_progress_dialog)
-  {
-    m_progress_dialog = new QProgressDialog(m_render_widget, Qt::WindowTitleHint);
-    m_progress_dialog->show();
-    m_progress_dialog->setCancelButton(nullptr);
-    m_progress_dialog->setWindowTitle(tr("Dolphin"));
-  }
-
-  m_progress_dialog->setValue(progress);
-  m_progress_dialog->setLabelText(title);
-  m_progress_dialog->setMaximum(total);
-
-  if (total < 0 || progress >= total)
-  {
-    m_progress_dialog->hide();
-    m_progress_dialog->deleteLater();
-    m_progress_dialog = nullptr;
-  }
 }
 
 void MainWindow::Show()

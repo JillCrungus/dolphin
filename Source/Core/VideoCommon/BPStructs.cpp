@@ -25,6 +25,7 @@
 #include "VideoCommon/Fifo.h"
 #include "VideoCommon/FramebufferManager.h"
 #include "VideoCommon/GeometryShaderManager.h"
+#include "VideoCommon/OpcodeDecoding.h"
 #include "VideoCommon/PerfQueryBase.h"
 #include "VideoCommon/PixelEngine.h"
 #include "VideoCommon/PixelShaderManager.h"
@@ -240,19 +241,19 @@ static void BPWritten(const BPCmd& bp)
     // known for configuring these out-of-range copies.
     int copy_width = srcRect.GetWidth();
     int copy_height = srcRect.GetHeight();
-    if (srcRect.right > EFB_WIDTH || srcRect.bottom > EFB_HEIGHT)
+    if (srcRect.right > s32(EFB_WIDTH) || srcRect.bottom > s32(EFB_HEIGHT))
     {
       WARN_LOG(VIDEO, "Oversized EFB copy: %dx%d (offset %d,%d stride %u)", copy_width, copy_height,
                srcRect.left, srcRect.top, destStride);
 
       // Adjust the copy size to fit within the EFB. So that we don't end up with a stretched image,
       // instead of clamping the source rectangle, we reduce it by the over-sized amount.
-      if (copy_width > EFB_WIDTH)
+      if (copy_width > s32(EFB_WIDTH))
       {
         srcRect.right -= copy_width - EFB_WIDTH;
         copy_width = EFB_WIDTH;
       }
-      if (copy_height > EFB_HEIGHT)
+      if (copy_height > s32(EFB_HEIGHT))
       {
         srcRect.bottom -= copy_height - EFB_HEIGHT;
         copy_height = EFB_HEIGHT;
@@ -278,9 +279,7 @@ static void BPWritten(const BPCmd& bp)
       // We should be able to get away with deactivating the current bbox tracking
       // here. Not sure if there's a better spot to put this.
       // the number of lines copied is determined by the y scale * source efb height
-
-      BoundingBox::active = false;
-      PixelShaderManager::SetBoundingBoxActive(false);
+      BoundingBox::Disable();
 
       float yScale;
       if (PE_copy.scale_invert)
@@ -343,7 +342,7 @@ static void BPWritten(const BPCmd& bp)
 
     Memory::CopyFromEmu(texMem + tlutTMemAddr, addr, tlutXferCount);
 
-    if (g_bRecordFifoData)
+    if (OpcodeDecoder::g_record_fifo_data)
       FifoRecorder::GetInstance().UseMemory(addr, tlutXferCount, MemoryUpdate::TMEM);
 
     TextureCacheBase::InvalidateAllBindPoints();
@@ -448,9 +447,8 @@ static void BPWritten(const BPCmd& bp)
   case BPMEM_CLEARBBOX1:
   case BPMEM_CLEARBBOX2:
   {
-    u8 offset = bp.address & 2;
-    BoundingBox::active = true;
-    PixelShaderManager::SetBoundingBoxActive(true);
+    const u8 offset = bp.address & 2;
+    BoundingBox::Enable();
 
     if (g_ActiveConfig.backend_info.bSupportsBBox && g_ActiveConfig.bBBoxEnable)
     {
@@ -566,7 +564,7 @@ static void BPWritten(const BPCmd& bp)
         }
       }
 
-      if (g_bRecordFifoData)
+      if (OpcodeDecoder::g_record_fifo_data)
         FifoRecorder::GetInstance().UseMemory(src_addr, bytes_read, MemoryUpdate::TMEM);
 
       TextureCacheBase::InvalidateAllBindPoints();
@@ -991,7 +989,7 @@ void GetBPRegInfo(const u8* data, std::string* name, std::string* desc)
     SetRegName(BPMEM_EFB_TL);
     X10Y10 left_top;
     left_top.hex = cmddata;
-    *desc = fmt::format("Left: {}\nTop: {}", left_top.x, left_top.y);
+    *desc = fmt::format("Left: {}\nTop: {}", u32(left_top.x), u32(left_top.y));
   }
   break;
 
@@ -1185,7 +1183,7 @@ void GetBPRegInfo(const u8* data, std::string* name, std::string* desc)
                         "Width: {}\n"
                         "Height: {}\n"
                         "Format: {:x}\n",
-                        texnum, teximg.width + 1, teximg.height + 1, teximg.format);
+                        texnum, u32(teximg.width) + 1, u32(teximg.height) + 1, u32(teximg.format));
   }
   break;
 
@@ -1208,8 +1206,8 @@ void GetBPRegInfo(const u8* data, std::string* name, std::string* desc)
                         "Even TMEM Width: {}\n"
                         "Even TMEM Height: {}\n"
                         "Cache is manually managed: {}\n",
-                        texnum, teximg.tmem_even, teximg.cache_width, teximg.cache_height,
-                        no_yes[teximg.image_type]);
+                        texnum, u32(teximg.tmem_even), u32(teximg.cache_width),
+                        u32(teximg.cache_height), no_yes[teximg.image_type]);
   }
   break;
 
@@ -1231,7 +1229,8 @@ void GetBPRegInfo(const u8* data, std::string* name, std::string* desc)
                         "Odd TMEM Offset: {:x}\n"
                         "Odd TMEM Width: {}\n"
                         "Odd TMEM Height: {}\n",
-                        texnum, teximg.tmem_odd, teximg.cache_width, teximg.cache_height);
+                        texnum, u32(teximg.tmem_odd), u32(teximg.cache_width),
+                        u32(teximg.cache_height));
   }
   break;
 

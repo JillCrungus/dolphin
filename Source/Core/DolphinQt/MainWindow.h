@@ -11,7 +11,6 @@
 #include <optional>
 #include <string>
 
-class QProgressDialog;
 class QStackedWidget;
 class QString;
 
@@ -35,6 +34,7 @@ class MemoryWidget;
 class MenuBar;
 class NetPlayDialog;
 class NetPlaySetupDialog;
+class NetworkWidget;
 class RegisterWidget;
 class RenderWidget;
 class SearchBar;
@@ -164,9 +164,10 @@ private:
   void OnBootGameCubeIPL(DiscIO::Region region);
   void OnImportNANDBackup();
   void OnConnectWiiRemote(int id);
-  void OnSignal();
 
-  void OnUpdateProgressDialog(QString label, int progress, int total);
+#if defined(__unix__) || defined(__unix) || defined(__APPLE__)
+  void OnSignal();
+#endif
 
   void OnPlayRecording();
   void OnStartRecording();
@@ -192,7 +193,6 @@ private:
   std::unique_ptr<X11Utils::XRRConfiguration> m_xrr_config;
 #endif
 
-  QProgressDialog* m_progress_dialog = nullptr;
   QStackedWidget* m_stack;
   ToolBar* m_tool_bar;
   MenuBar* m_menu_bar;
@@ -229,6 +229,7 @@ private:
   LogWidget* m_log_widget;
   LogConfigWidget* m_log_config_widget;
   MemoryWidget* m_memory_widget;
+  NetworkWidget* m_network_widget;
   RegisterWidget* m_register_widget;
   WatchWidget* m_watch_widget;
   CheatsManager* m_cheats_manager;

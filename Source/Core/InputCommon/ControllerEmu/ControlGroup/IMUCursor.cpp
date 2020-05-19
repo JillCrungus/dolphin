@@ -17,10 +17,17 @@
 namespace ControllerEmu
 {
 IMUCursor::IMUCursor(std::string name, std::string ui_name)
-    : ControlGroup(std::move(name), std::move(ui_name), GroupType::IMUCursor,
-                   ControlGroup::CanBeDisabled::Yes)
+    : ControlGroup(
+          std::move(name), std::move(ui_name), GroupType::IMUCursor,
+#ifdef ANDROID
+          // Enabling this on Android devices which have an accelerometer and gyroscope prevents
+          // touch controls from being used for pointing, and touch controls generally work better
+          ControlGroup::DefaultValue::Disabled)
+#else
+          ControlGroup::DefaultValue::Enabled)
+#endif
 {
-  controls.emplace_back(std::make_unique<Input>(Translate, _trans("Recenter")));
+  AddInput(Translate, _trans("Recenter"));
 
   // Default values are optimized for "Super Mario Galaxy 2".
   // This seems to be acceptable for a good number of games.
