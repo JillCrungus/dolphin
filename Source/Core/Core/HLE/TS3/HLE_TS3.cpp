@@ -9,6 +9,8 @@
 #include "Core/Host.h"
 #include "Core/PowerPC/MMU.h"
 #include "Core/PowerPC/PowerPC.h"
+#include "Core/TS/TSConfigManager.h"
+#include "UICommon//DiscordPresence.h"
 
 namespace HLE_TS3
 {
@@ -69,6 +71,11 @@ void TestDisplayText()
   NPC = 0x8000bde0;
 }
 
+void HLE_UpdateCurrentLevel()
+{
+  TSConfig::GetInstance().SetLevel(PowerPC::HostRead_U32(0x80612614));
+}
+
 void HLE_DebugButtonCheat()
 {
   int param_1 = GPR(3);
@@ -101,7 +108,7 @@ void HLE_ButtonCheatInputCheck()
     return;
   }
 
-  //INFO_LOG(TS3, "[Button cheat] param_1: %Xh current: %Xh", param_1, currentbutton);
+  // INFO_LOG(TS3, "[Button cheat] param_1: %Xh current: %Xh", param_1, currentbutton);
 
   int currentbufferpos = PowerPC::HostRead_U32(BUTTON_BUFFER_POS_ADDR);
   int currentbufferaddress = BUTTON_BUFFER_ADDR + (currentbufferpos * 2);
@@ -111,7 +118,7 @@ void HLE_ButtonCheatInputCheck()
 
   u16 lastButton = PowerPC::HostRead_U16(lastbufferaddress);
 
-  //FRD didn't do this check, making button codes frame perfect...
+  // FRD didn't do this check, making button codes frame perfect...
   if (lastButton == currentbutton)
   {
     NPC = LR;
@@ -121,7 +128,6 @@ void HLE_ButtonCheatInputCheck()
   PowerPC::HostWrite_U16(currentbutton % 3839, currentbufferaddress);
   PowerPC::HostWrite_U32((currentbufferpos + 1) % 20, BUTTON_BUFFER_POS_ADDR);
   NPC = LR;
-
 }
 
 void HLE_DebugUnlockAll()

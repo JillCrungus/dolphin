@@ -39,6 +39,7 @@
 #include "Core/Boot/Boot.h"
 #include "Core/BootManager.h"
 #include "Core/ConfigManager.h"
+#include "Core/TS/TSConfigManager.h"
 #include "Core/CoreTiming.h"
 #include "Core/DSPEmulator.h"
 #include "Core/FifoPlayer/FifoPlayer.h"
@@ -295,6 +296,8 @@ void Stop()  // - Hammertime!
 
   ResetRumble();
 
+  TSConfig::GetInstance().SetLevel(-1);
+
 #ifdef USE_MEMORYWATCHER
   s_memory_watcher.reset();
 #endif
@@ -458,6 +461,7 @@ static void EmuThread(std::unique_ptr<BootParameters> boot, WindowSystemInfo wsi
     // The config must be restored only after the whole HW has shut down,
     // not when it is still running.
     BootManager::RestoreConfig();
+    TSConfig::GetInstance().SetLevel(-1);
 
     PatchEngine::Shutdown();
     HLE::Clear();

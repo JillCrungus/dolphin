@@ -44,7 +44,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 25> OSPatches{{
+constexpr std::array<SPatch, 26> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -86,7 +86,10 @@ constexpr std::array<SPatch, 25> OSPatches{{
   //{"DebugButtonCheat", HLE_TS3::HLE_DebugButtonCheat, HookType::None, HookFlag::Fixed},
   {"UnlockAllCheatDebug", HLE_TS3::HLE_DebugUnlockAll, HookType::Start, HookFlag::Fixed},
   //{"DebugCheatCheck", HLE_TS3::HLE_DebugCheatCheck, HookType::None, HookFlag::Fixed},
-  {"FixButtonCheats", HLE_TS3::HLE_ButtonCheatInputCheck, HookType::Replace, HookFlag::Fixed}
+  {"FixButtonCheats", HLE_TS3::HLE_ButtonCheatInputCheck, HookType::Replace, HookFlag::Fixed},
+
+  //The function this hooks has nothing to do with updating the current level, but it's called in places that makes it convenient to hijack for getting the current level
+  {"UpdateCurrentLevel", HLE_TS3::HLE_UpdateCurrentLevel, HookType::Start, HookFlag::Fixed}
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -162,8 +165,9 @@ void PatchTS3Functions()
 {
   // Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
   // Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
-  //Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "DebugButtonCheat");
+  // Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "DebugButtonCheat");
   Patch(HLE_TS3::UNLOCK_ALL_FUNC, "UnlockAllCheatDebug");
+  Patch(0x80031a40, "UpdateCurrentLevel");
 
   if (TSConfig::GetInstance().bSkipVideos)
   {
