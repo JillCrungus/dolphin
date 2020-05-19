@@ -44,7 +44,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 28> OSPatches{{
+constexpr std::array<SPatch, 26> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -78,16 +78,8 @@ constexpr std::array<SPatch, 28> OSPatches{{
     {"GeckoHandlerReturnTrampoline", HLE_Misc::GeckoReturnTrampoline,       HookType::Replace, HookFlag::Fixed},
     {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed}, // apploader needs OSReport-like function
 
-    //TS3 Patches
-    //{"LoadBindPose",                 HLE_TS3::HLE_LoadBindPose,             HookType::Start,   HookFlag::Fixed}, //Called by bind pose init func in TS3
-    //{"GetCurrentLevelPADPath",       HLE_TS3::HLE_GetCurrentLevelPADPath,   HookType::Start,   HookFlag::Fixed},  //Gets filepathpath for the current level's PAD data
-    {"SetNextMusicTrack",            HLE_TS3::SetNextMusicTrack,            HookType::None, HookFlag::Fixed},  //Sets the next music track to be played, disabled until it doesn't crash
-   // {"Last_Stand_Horror_ChrSet_Ptr", (void*)HLE_TS3::test_set, HookType::Replace, HookFlag::Fixed}
-
   {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed},
-  //{"DebugButtonCheat", HLE_TS3::HLE_DebugButtonCheat, HookType::None, HookFlag::Fixed},
-  {"UnlockAllCheatDebug", HLE_TS3::HLE_DebugUnlockAll, HookType::Start, HookFlag::Fixed},
-  //{"DebugCheatCheck", HLE_TS3::HLE_DebugCheatCheck, HookType::None, HookFlag::Fixed},
+
   {"FixButtonCheats", HLE_TS3::HLE_ButtonCheatInputCheck, HookType::Replace, HookFlag::Fixed},
 
   //The function this hooks has nothing to do with updating the current level, but it's called in places that makes it convenient to hijack for getting the current level
@@ -112,63 +104,8 @@ void Patch(u32 addr, std::string_view func_name)
   }
 }
 
-class TSFPHack_MemManager
-{
-  static const u32 CUSTOM_MEM_START = 0x81C5F650;  // End of native MEM1
-
-  u32 writeHead;
-
-public:
-  TSFPHack_MemManager()
-  {
-    writeHead = CUSTOM_MEM_START;
-    INFO_LOG(TS3,
-             "TSFPHack_MemManager: Mem manager created, initialised writeHead to start of extended "
-             "memory at 0x%08X",
-             writeHead);
-  }
-
-  void WriteU32(u32 val)
-  {
-    INFO_LOG(TS3, "TSFPHack_MemManager: Writing u32 %u to location %08X in extended memory", val,
-             writeHead);
-    if (!PowerPC::HostIsRAMAddress(writeHead))
-    {
-      INFO_LOG(TS3,
-               "TSFPHack_MemManager: %08X is not regarded a valid RAM address by HostIsRAMAddress!",
-               writeHead);
-    }
-    PowerPC::HostWrite_U32(val, writeHead);
-    writeHead += sizeof(u32);
-    INFO_LOG(TS3, "TSFPHack_MemManager: New writehead is 0x%08X", writeHead);
-  }
-
-  void WriteS32(int val)
-  {
-    INFO_LOG(TS3, "TSFPHack_MemManager: Writing s32 %i to location %08X in extended memory", val,
-             writeHead);
-    PowerPC::HostWrite_U32(val, writeHead);
-    writeHead += sizeof(int);
-    INFO_LOG(TS3, "TSFPHack_MemManager: New writehead is 0x%08X", writeHead);
-  }
-
-  void WriteF32(float val)
-  {
-    INFO_LOG(TS3, "TSFPHack_MemManager: Writing f32 %.2f to location %08X in extended memory", val,
-             writeHead);
-    PowerPC::HostWrite_F32(val, writeHead);
-    writeHead += sizeof(float);
-    INFO_LOG(TS3, "TSFPHack_MemManager: New writehead is 0x%08X", writeHead);
-  }
-  u32 GetPos() { return writeHead; }
-};
-
 void PatchTS3Functions()
 {
-  // Patch(HLE_TS3::LOAD_BINDPOSE_ADDRESS, "LoadBindPose");
-  // Patch(HLE_TS3::GET_PAD_PATH_ADDRESS, "GetCurrentLevelPADPath");
-  // Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "DebugButtonCheat");
-  Patch(HLE_TS3::UNLOCK_ALL_FUNC, "UnlockAllCheatDebug");
   Patch(0x80031a40, "UpdateCurrentLevel");
 
   if (TSConfig::GetInstance().bSkipVideos)
@@ -183,8 +120,6 @@ void PatchTS3Functions()
     Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "FixButtonCheats");
   }
 
-  // HostWrite_String("Hello Discord!", HLE_TS3::TEST_STRING);
-
   if (TSConfig::GetInstance().bVerticalSplitscreen)
   {
     // Player 1
@@ -194,66 +129,9 @@ void PatchTS3Functions()
 
     // Player 2
     PowerPC::HostWrite_U32(0x38a00000, 0x80259470);  // li         r5,0x0
-    // PowerPC::HostWrite_U32(0x38deffff, 0x80259474);  // subi       r6,Half_screen_width,0x1
+
     PowerPC::HostWrite_U32(0x7fc4f378, 0x80259478);  // or r4,half_screen_width,half_screen_width
   }
-
-  // Extra memory thing test go!!
-
-  TSFPHack_MemManager* mgr = new TSFPHack_MemManager();
-  u32 testpos = mgr->GetPos();
-
-  // Let's write this test data really quick and dirty
-
-  INFO_LOG(TS3, "EXAMINING ORIG DATA FOR TESTING");
-  u32 oldchrset = PowerPC::HostRead_U32(HLE_TS3::CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC);
-  INFO_LOG(TS3, "%08X", oldchrset);
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 4));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 8));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 12));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 16));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 20));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 24));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 28));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 32));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 36));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 40));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(oldchrset + 44));
-
-  mgr->WriteU32(HLE_TS3::test_set[0].char_type);
-  mgr->WriteF32(HLE_TS3::test_set[0].health_mult);
-  mgr->WriteU32(HLE_TS3::test_set[0].team);
-  mgr->WriteU32(HLE_TS3::test_set[0].unk1);
-
-  mgr->WriteU32(HLE_TS3::test_set[1].char_type);
-  mgr->WriteF32(HLE_TS3::test_set[1].health_mult);
-  mgr->WriteU32(HLE_TS3::test_set[1].team);
-  mgr->WriteU32(HLE_TS3::test_set[1].unk1);
-
-  mgr->WriteU32(HLE_TS3::test_set[2].char_type);
-  mgr->WriteF32(HLE_TS3::test_set[2].health_mult);
-  mgr->WriteU32(HLE_TS3::test_set[2].team);
-  mgr->WriteU32(HLE_TS3::test_set[2].unk1);
-
-  INFO_LOG(TS3, "Pointer to old laststand charset is  %08X, overwriting with %08X",
-           PowerPC::HostRead_U32(HLE_TS3::CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC), testpos);
-  PowerPC::HostWrite_U32(testpos, HLE_TS3::CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC);
-
-  INFO_LOG(TS3, "EXAMINING DATA FOR TESTING");
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_U32(HLE_TS3::CHALLENGE_LAST_STAND_HORROR_CHRSET_PTR_LOC));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 4));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 8));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 12));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 16));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 20));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 24));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 28));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 32));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 36));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 40));
-  INFO_LOG(TS3, "%08X", PowerPC::HostRead_S32(testpos + 44));
 }
 
 void PatchFixedFunctions()
