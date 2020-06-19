@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 
 #include <fmt/format.h>
 
@@ -141,7 +142,7 @@ CEXIMemoryCard::CEXIMemoryCard(const int index, bool gciFolder) : card_index(ind
   bool useMC251;
   IniFile gameIni = SConfig::GetInstance().LoadGameIni();
   gameIni.GetOrCreateSection("Core")->Get("MemoryCard251", &useMC251, false);
-  u16 sizeMb = useMC251 ? MBIT_SIZE_MEMORY_CARD_251 : MBIT_SIZE_MEMORY_CARD_2043;
+  u16 sizeMb = useMC251 ? Memcard::MBIT_SIZE_MEMORY_CARD_251 : Memcard::MBIT_SIZE_MEMORY_CARD_2043;
 
   if (gciFolder)
   {
@@ -158,42 +159,46 @@ CEXIMemoryCard::CEXIMemoryCard(const int index, bool gciFolder) : card_index(ind
   SetCardFlashID(header.data(), card_index);
 }
 
+std::pair<std::string /* path */, bool /* migrate */>
+CEXIMemoryCard::GetGCIFolderPath(int card_index, AllowMovieFolder allow_movie_folder)
+{
+  std::string path_override =
+      Config::Get(card_index == 0 ? Config::MAIN_GCI_FOLDER_A_PATH_OVERRIDE :
+                                    Config::MAIN_GCI_FOLDER_B_PATH_OVERRIDE);
+
+  if (!path_override.empty())
+    return {std::move(path_override), false};
+
+  std::string path = File::GetUserPath(D_GCUSER_IDX);
+
+  const bool use_movie_folder = allow_movie_folder == AllowMovieFolder::Yes &&
+                                Movie::IsPlayingInput() && Movie::IsConfigSaved() &&
+                                Movie::IsUsingMemcard(card_index) &&
+                                Movie::IsStartingFromClearSave();
+
+  if (use_movie_folder)
+    path += "Movie" DIR_SEP;
+
+  const DiscIO::Region region = SConfig::ToGameCubeRegion(SConfig::GetInstance().m_region);
+  path = path + SConfig::GetDirectoryForRegion(region) + DIR_SEP +
+         fmt::format("Card {}", char('A' + card_index));
+  return {std::move(path), !use_movie_folder};
+}
+
 void CEXIMemoryCard::SetupGciFolder(u16 sizeMb)
 {
-  const DiscIO::Region region = SConfig::ToGameCubeRegion(SConfig::GetInstance().m_region);
-
   const std::string& game_id = SConfig::GetInstance().GetGameID();
   u32 CurrentGameId = 0;
   if (game_id.length() >= 4 && game_id != "00000000" &&
       SConfig::GetInstance().GetTitleID() != Titles::SYSTEM_MENU)
-    CurrentGameId = BE32((u8*)game_id.c_str());
-
-  const bool shift_jis = region == DiscIO::Region::NTSC_J;
-
-  std::string strDirectoryName = File::GetUserPath(D_GCUSER_IDX);
-
-  bool migrate = true;
-
-  if (Movie::IsPlayingInput() && Movie::IsConfigSaved() && Movie::IsUsingMemcard(card_index) &&
-      Movie::IsStartingFromClearSave())
   {
-    strDirectoryName += "Movie" DIR_SEP;
-    migrate = false;
+    CurrentGameId = Common::swap32(reinterpret_cast<const u8*>(game_id.c_str()));
   }
 
-  const std::string path_override =
-      Config::Get(card_index == 0 ? Config::MAIN_GCI_FOLDER_A_PATH_OVERRIDE :
-                                    Config::MAIN_GCI_FOLDER_B_PATH_OVERRIDE);
-  if (!path_override.empty())
-  {
-    strDirectoryName = path_override;
-    migrate = false;
-  }
-  else
-  {
-    strDirectoryName = strDirectoryName + SConfig::GetDirectoryForRegion(region) + DIR_SEP +
-                       fmt::format("Card {}", char('A' + card_index));
-  }
+  const bool shift_jis =
+      SConfig::ToGameCubeRegion(SConfig::GetInstance().m_region) == DiscIO::Region::NTSC_J;
+
+  const auto [strDirectoryName, migrate] = GetGCIFolderPath(card_index, AllowMovieFolder::Yes);
 
   const File::FileInfo file_info(strDirectoryName);
   if (!file_info.Exists())
@@ -240,7 +245,7 @@ void CEXIMemoryCard::SetupRawMemcard(u16 sizeMb)
       SConfig::GetDirectoryForRegion(SConfig::ToGameCubeRegion(SConfig::GetInstance().m_region));
   MemoryCard::CheckPath(filename, region_dir, is_slot_a);
 
-  if (sizeMb == MBIT_SIZE_MEMORY_CARD_251)
+  if (sizeMb == Memcard::MBIT_SIZE_MEMORY_CARD_251)
     filename.insert(filename.find_last_of("."), ".251");
 
   memorycard = std::make_unique<MemoryCard>(filename, card_index, sizeMb);
@@ -540,9 +545,9 @@ void CEXIMemoryCard::DMARead(u32 _uAddr, u32 _uSize)
 {
   memorycard->Read(address, _uSize, Memory::GetPointer(_uAddr));
 
-  if ((address + _uSize) % BLOCK_SIZE == 0)
+  if ((address + _uSize) % Memcard::BLOCK_SIZE == 0)
   {
-    INFO_LOG(EXPANSIONINTERFACE, "reading from block: %x", address / BLOCK_SIZE);
+    INFO_LOG(EXPANSIONINTERFACE, "reading from block: %x", address / Memcard::BLOCK_SIZE);
   }
 
   // Schedule transfer complete later based on read speed
@@ -556,9 +561,9 @@ void CEXIMemoryCard::DMAWrite(u32 _uAddr, u32 _uSize)
 {
   memorycard->Write(address, _uSize, Memory::GetPointer(_uAddr));
 
-  if (((address + _uSize) % BLOCK_SIZE) == 0)
+  if (((address + _uSize) % Memcard::BLOCK_SIZE) == 0)
   {
-    INFO_LOG(EXPANSIONINTERFACE, "writing to block: %x", address / BLOCK_SIZE);
+    INFO_LOG(EXPANSIONINTERFACE, "writing to block: %x", address / Memcard::BLOCK_SIZE);
   }
 
   // Schedule transfer complete later based on write speed

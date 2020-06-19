@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <locale>
 #include <map>
 #include <memory>
 #include <optional>
@@ -261,8 +260,7 @@ std::string VolumeWAD::GetMakerID(const Partition& partition) const
     return "00";
 
   // Some weird channels use 0x0000 in place of the MakerID, so we need a check here
-  const std::locale& c_locale = std::locale::classic();
-  if (!std::isprint(temp[0], c_locale) || !std::isprint(temp[1], c_locale))
+  if (!IsPrintableCharacter(temp[0]) || !IsPrintableCharacter(temp[1]))
     return "00";
 
   return DecodeString(temp);
@@ -327,6 +325,11 @@ bool VolumeWAD::IsSizeAccurate() const
 u64 VolumeWAD::GetRawSize() const
 {
   return m_reader->GetRawSize();
+}
+
+const BlobReader& VolumeWAD::GetBlobReader() const
+{
+  return *m_reader;
 }
 
 }  // namespace DiscIO

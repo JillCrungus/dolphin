@@ -130,15 +130,15 @@ void GameCubePane::ConnectWidgets()
 {
   // IPL Settings
   connect(m_skip_main_menu, &QCheckBox::stateChanged, this, &GameCubePane::SaveSettings);
-  connect(m_language_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+  connect(m_language_combo, qOverload<int>(&QComboBox::currentIndexChanged), this,
           &GameCubePane::SaveSettings);
 
   // Device Settings
   for (int i = 0; i < SLOT_COUNT; i++)
   {
-    connect(m_slot_combos[i], QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+    connect(m_slot_combos[i], qOverload<int>(&QComboBox::currentIndexChanged), this,
             [this, i] { UpdateButton(i); });
-    connect(m_slot_combos[i], QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+    connect(m_slot_combos[i], qOverload<int>(&QComboBox::currentIndexChanged), this,
             &GameCubePane::SaveSettings);
     connect(m_slot_buttons[i], &QPushButton::clicked, [this, i] { OnConfigPressed(i); });
   }
@@ -210,7 +210,7 @@ void GameCubePane::OnConfigPressed(int slot)
   {
     if (File::Exists(filename.toStdString()))
     {
-      auto [error_code, mc] = GCMemcard::Open(filename.toStdString());
+      auto [error_code, mc] = Memcard::GCMemcard::Open(filename.toStdString());
 
       if (error_code.HasCriticalErrors() || !mc || !mc->IsValid())
       {

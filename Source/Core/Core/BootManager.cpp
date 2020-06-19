@@ -45,6 +45,7 @@
 #include "Core/Movie.h"
 #include "Core/NetPlayProto.h"
 #include "Core/PowerPC/PowerPC.h"
+#include "Core/WiiRoot.h"
 
 #include "DiscIO/Enums.h"
 
@@ -95,10 +96,9 @@ private:
   float m_OCFactor;
   bool m_OCEnable;
   bool m_bt_passthrough_enabled;
-  std::string strBackend;
   std::string sBackend;
   std::string m_strGPUDeterminismMode;
-  std::array<int, MAX_BBMOTES> iWiimoteSource;
+  std::array<WiimoteSource, MAX_BBMOTES> iWiimoteSource;
   std::array<SerialInterface::SIDevices, SerialInterface::MAX_SI_CHANNELS> Pads;
   std::array<ExpansionInterface::TEXIDevices, ExpansionInterface::MAX_EXI_CHANNELS> m_EXIDevice;
 };
@@ -126,14 +126,15 @@ void ConfigCache::SaveConfig(const SConfig& config)
   cpu_core = config.cpu_core;
   Volume = config.m_Volume;
   m_EmulationSpeed = config.m_EmulationSpeed;
-  strBackend = config.m_strVideoBackend;
   sBackend = config.sBackend;
   m_strGPUDeterminismMode = config.m_strGPUDeterminismMode;
   m_OCFactor = config.m_OCFactor;
   m_OCEnable = config.m_OCEnable;
   m_bt_passthrough_enabled = config.m_bt_passthrough_enabled;
 
-  std::copy(std::begin(g_wiimote_sources), std::end(g_wiimote_sources), std::begin(iWiimoteSource));
+  for (int i = 0; i != MAX_BBMOTES; ++i)
+    iWiimoteSource[i] = WiimoteCommon::GetSource(i);
+
   std::copy(std::begin(config.m_SIDevice), std::end(config.m_SIDevice), std::begin(Pads));
   std::copy(std::begin(config.m_EXIDevice), std::end(config.m_EXIDevice), std::begin(m_EXIDevice));
 
@@ -180,10 +181,7 @@ void ConfigCache::RestoreConfig(SConfig* config)
     for (unsigned int i = 0; i < MAX_BBMOTES; ++i)
     {
       if (bSetWiimoteSource[i])
-      {
-        g_wiimote_sources[i] = iWiimoteSource[i];
-        WiimoteReal::ChangeWiimoteSource(i, iWiimoteSource[i]);
-      }
+        WiimoteCommon::SetSource(i, iWiimoteSource[i]);
     }
   }
 
@@ -202,13 +200,11 @@ void ConfigCache::RestoreConfig(SConfig* config)
       config->m_EXIDevice[i] = m_EXIDevice[i];
   }
 
-  config->m_strVideoBackend = strBackend;
   config->sBackend = sBackend;
   config->m_strGPUDeterminismMode = m_strGPUDeterminismMode;
   config->m_OCFactor = m_OCFactor;
   config->m_OCEnable = m_OCEnable;
   config->m_bt_passthrough_enabled = m_bt_passthrough_enabled;
-  VideoBackendBase::ActivateBackend(config->m_strVideoBackend);
 }
 
 static ConfigCache config_cache;
@@ -269,7 +265,6 @@ bool BootCore(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
     core_section->Get("SyncGPU", &StartUp.bSyncGPU, StartUp.bSyncGPU);
     core_section->Get("FastDiscSpeed", &StartUp.bFastDiscSpeed, StartUp.bFastDiscSpeed);
     core_section->Get("DSPHLE", &StartUp.bDSPHLE, StartUp.bDSPHLE);
-    core_section->Get("GFXBackend", &StartUp.m_strVideoBackend, StartUp.m_strVideoBackend);
     core_section->Get("CPUCore", &StartUp.cpu_core, StartUp.cpu_core);
     core_section->Get("HLE_BS2", &StartUp.bHLE_BS2, StartUp.bHLE_BS2);
     core_section->Get("GameCubeLanguage", &StartUp.SelectedLanguage, StartUp.SelectedLanguage);
@@ -280,7 +275,6 @@ bool BootCore(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
       config_cache.bSetVolume = true;
     dsp_section->Get("EnableJIT", &StartUp.m_DSPEnableJIT, StartUp.m_DSPEnableJIT);
     dsp_section->Get("Backend", &StartUp.sBackend, StartUp.sBackend);
-    VideoBackendBase::ActivateBackend(StartUp.m_strVideoBackend);
     core_section->Get("GPUDeterminismMode", &StartUp.m_strGPUDeterminismMode,
                       StartUp.m_strGPUDeterminismMode);
     core_section->Get("Overclock", &StartUp.m_OCFactor, StartUp.m_OCFactor);
@@ -304,21 +298,22 @@ bool BootCore(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
       for (unsigned int i = 0; i < MAX_WIIMOTES; ++i)
       {
         controls_section->Get(fmt::format("WiimoteSource{}", i), &source, -1);
-        if (source != -1 && g_wiimote_sources[i] != (unsigned)source &&
-            source >= WIIMOTE_SRC_NONE && source <= WIIMOTE_SRC_REAL)
+        if (source != -1 && WiimoteCommon::GetSource(i) != WiimoteSource(source) &&
+            WiimoteSource(source) >= WiimoteSource::None &&
+            WiimoteSource(source) <= WiimoteSource::Real)
         {
           config_cache.bSetWiimoteSource[i] = true;
-          g_wiimote_sources[i] = source;
-          WiimoteReal::ChangeWiimoteSource(i, source);
+          WiimoteCommon::SetSource(i, WiimoteSource(source));
         }
       }
       controls_section->Get("WiimoteSourceBB", &source, -1);
-      if (source != -1 && g_wiimote_sources[WIIMOTE_BALANCE_BOARD] != (unsigned)source &&
-          (source == WIIMOTE_SRC_NONE || source == WIIMOTE_SRC_REAL))
+      if (source != -1 &&
+          WiimoteCommon::GetSource(WIIMOTE_BALANCE_BOARD) != WiimoteSource(source) &&
+          (WiimoteSource(source) == WiimoteSource::None ||
+           WiimoteSource(source) == WiimoteSource::Real))
       {
         config_cache.bSetWiimoteSource[WIIMOTE_BALANCE_BOARD] = true;
-        g_wiimote_sources[WIIMOTE_BALANCE_BOARD] = source;
-        WiimoteReal::ChangeWiimoteSource(WIIMOTE_BALANCE_BOARD, source);
+        WiimoteCommon::SetSource(WIIMOTE_BALANCE_BOARD, WiimoteSource(source));
       }
     }
   }
@@ -425,6 +420,8 @@ bool BootCore(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
         case DiscIO::Region::NTSC_K:
           Config::SetCurrent(Config::SYSCONF_COUNTRY, 0x88);  // South Korea
           break;
+        case DiscIO::Region::Unknown:
+          break;
         }
       }
     }
@@ -437,7 +434,10 @@ bool BootCore(std::unique_ptr<BootParameters> boot, const WindowSystemInfo& wsi)
 
   // Ensure any new settings are written to the SYSCONF
   if (StartUp.bWii)
+  {
+    Core::BackupWiiSettings();
     ConfigLoaders::SaveToSYSCONF(Config::LayerType::Meta);
+  }
 
   const bool load_ipl = !StartUp.bWii && !StartUp.bHLE_BS2 &&
                         std::holds_alternative<BootParameters::Disc>(boot->parameters);
@@ -485,6 +485,7 @@ static void RestoreSYSCONF()
 
 void RestoreConfig()
 {
+  Core::RestoreWiiSettings(Core::RestoreReason::EmulationEnd);
   RestoreSYSCONF();
   Config::ClearCurrentRunLayer();
   Config::RemoveLayer(Config::LayerType::Movie);

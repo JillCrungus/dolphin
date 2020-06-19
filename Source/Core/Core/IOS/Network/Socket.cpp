@@ -17,6 +17,7 @@
 
 #include "Common/File.h"
 #include "Common/FileUtil.h"
+#include "Core/Config/MainSettings.h"
 #include "Core/ConfigManager.h"
 #include "Core/Core.h"
 #include "Core/IOS/Device.h"
@@ -33,8 +34,6 @@
 
 namespace IOS::HLE
 {
-constexpr int WII_SOCKET_FD_MAX = 24;
-
 char* WiiSockMan::DecodeError(s32 ErrorCode)
 {
 #ifdef _WIN32
@@ -52,7 +51,12 @@ char* WiiSockMan::DecodeError(s32 ErrorCode)
 #endif
 }
 
-static s32 TranslateErrorCode(s32 native_error, bool isRW)
+// The following functions can return
+//  - EAGAIN / EWOULDBLOCK: send(to), recv(from), accept
+//  - EINPROGRESS: connect, bind
+//  - WSAEWOULDBLOCK: send(to), recv(from), accept, connect
+// On Windows is_rw is used to correct the return value for connect
+static s32 TranslateErrorCode(s32 native_error, bool is_rw)
 {
   switch (native_error)
   {
@@ -68,7 +72,7 @@ static s32 TranslateErrorCode(s32 native_error, bool isRW)
   case ERRORCODE(EISCONN):
     return -SO_EISCONN;
   case ERRORCODE(ENOTCONN):
-    return -SO_EAGAIN;  // After proper blocking SO_EAGAIN shouldn't be needed...
+    return -SO_ENOTCONN;
   case ERRORCODE(EINPROGRESS):
     return -SO_EINPROGRESS;
   case ERRORCODE(EALREADY):
@@ -87,14 +91,7 @@ static s32 TranslateErrorCode(s32 native_error, bool isRW)
   case ERRORCODE(ENETRESET):
     return -SO_ENETRESET;
   case EITHER(WSAEWOULDBLOCK, EAGAIN):
-    if (isRW)
-    {
-      return -SO_EAGAIN;  // EAGAIN
-    }
-    else
-    {
-      return -SO_EINPROGRESS;  // EINPROGRESS
-    }
+    return (is_rw) ? (-SO_EAGAIN) : (-SO_EINPROGRESS);
   default:
     return -1;
   }
@@ -170,6 +167,12 @@ s32 WiiSocket::CloseFd()
     ReturnValue = WiiSockMan::GetNetErrorCode(EITHER(WSAENOTSOCK, EBADF), "CloseFd", false);
   }
   fd = -1;
+
+  for (auto it = pending_sockops.begin(); it != pending_sockops.end();)
+  {
+    GetIOS()->EnqueueIPCReply(it->request, -SO_ENOTCONN);
+    it = pending_sockops.erase(it);
+  }
   return ReturnValue;
 }
 
@@ -319,7 +322,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
       if (it->is_ssl)
       {
         int sslID = Memory::Read_U32(BufferOut) - 1;
-        if (SSLID_VALID(sslID))
+        if (IOS::HLE::Device::IsSSLIDValid(sslID))
         {
           switch (it->ssl_type)
           {
@@ -379,7 +382,8 @@ void WiiSocket::Update(bool read, bool write, bool except)
 
             // mbedtls_ssl_get_peer_cert(ctx) seems not to work if handshake failed
             // Below is an alternative to dump the peer certificate
-            if (SConfig::GetInstance().m_SSLDumpPeerCert && ctx->session_negotiate != nullptr)
+            if (Config::Get(Config::MAIN_NETWORK_SSL_DUMP_PEER_CERT) &&
+                ctx->session_negotiate != nullptr)
             {
               const mbedtls_x509_crt* cert = ctx->session_negotiate->peer_cert;
               if (cert != nullptr)
@@ -404,7 +408,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
             int ret = mbedtls_ssl_write(&Device::NetSSL::_SSL[sslID].ctx,
                                         Memory::GetPointer(BufferOut2), BufferOutSize2);
 
-            if (SConfig::GetInstance().m_SSLDumpWrite && ret > 0)
+            if (Config::Get(Config::MAIN_NETWORK_SSL_DUMP_WRITE) && ret > 0)
             {
               std::string filename = File::GetUserPath(D_DUMPSSL_IDX) +
                                      SConfig::GetInstance().GetGameID() + "_write.bin";
@@ -442,7 +446,7 @@ void WiiSocket::Update(bool read, bool write, bool except)
             int ret = mbedtls_ssl_read(&Device::NetSSL::_SSL[sslID].ctx,
                                        Memory::GetPointer(BufferIn2), BufferInSize2);
 
-            if (SConfig::GetInstance().m_SSLDumpRead && ret > 0)
+            if (Config::Get(Config::MAIN_NETWORK_SSL_DUMP_READ) && ret > 0)
             {
               std::string filename = File::GetUserPath(D_DUMPSSL_IDX) +
                                      SConfig::GetInstance().GetGameID() + "_read.bin";
