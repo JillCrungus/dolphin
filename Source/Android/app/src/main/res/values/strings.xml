@@ -134,6 +134,7 @@
     <string name="wii_submenu">Wii</string>
     <string name="insert_sd_card">Insert SD Card</string>
     <string name="insert_sd_card_description">Supports SD and SDHC. Default size is 128 MB.</string>
+    <string name="wii_sd_card_allow_writes">Allow Writes to SD Card</string>
     <string name="wiimote_scanning">Wii Remote Continuous Scanning</string>
     <string name="wiimote_scanning_description">Leave this on if you are using a DolphinBar for real Wiimote support.</string>
     <string name="wiimote_speaker">Wii Remote Speaker</string>
@@ -157,12 +158,14 @@
 
     <!-- Audio Settings -->
     <string name="audio_submenu">Audio</string>
+    <string name="dsp_emulation_engine">DSP Emulation Engine</string>
     <string name="audio_stretch">Audio Stretching</string>
     <string name="audio_stretch_description">Stretches audio to reduce stuttering. Increases latency.</string>
     <string name="audio_volume">Audio Volume</string>
 
     <!-- Path Settings -->
     <string name="paths_submenu">Paths</string>
+    <string name="search_subfolders">Search Subfolders for Game Files</string>
     <string name="default_ISO">Default ISO</string>
     <string name="wii_NAND_root">Wii NAND Root</string>
     <string name="dump_path">Dump Path</string>
@@ -374,5 +377,6 @@
     <string name="pitch">Total Pitch</string>
     <string name="yaw">Total Yaw</string>
     <string name="vertical_offset">Vertical Offset</string>
+    <string name="disc_number">Disc %1$d</string>
 
 </resources>

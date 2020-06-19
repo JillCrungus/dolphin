@@ -12,7 +12,6 @@
 
 #include <QCheckBox>
 #include <QComboBox>
-#include <QErrorMessage>
 #include <QFileDialog>
 #include <QGridLayout>
 #include <QGroupBox>
@@ -56,8 +55,13 @@ ConvertDialog::ConvertDialog(QList<std::shared_ptr<const UICommon::GameFile>> fi
   grid_layout->setColumnStretch(1, 1);
 
   m_format = new QComboBox;
-  AddToFormatComboBox(QStringLiteral("ISO"), DiscIO::BlobType::PLAIN);
-  AddToFormatComboBox(QStringLiteral("GCZ"), DiscIO::BlobType::GCZ);
+  m_format->addItem(QStringLiteral("ISO"), static_cast<int>(DiscIO::BlobType::PLAIN));
+  m_format->addItem(QStringLiteral("GCZ"), static_cast<int>(DiscIO::BlobType::GCZ));
+  if (std::all_of(m_files.begin(), m_files.end(),
+                  [](const auto& file) { return file->GetBlobType() == DiscIO::BlobType::PLAIN; }))
+  {
+    m_format->setCurrentIndex(m_format->count() - 1);
+  }
   grid_layout->addWidget(new QLabel(tr("Format:")), 0, 0);
   grid_layout->addWidget(m_format, 0, 1);
 
@@ -105,17 +109,6 @@ ConvertDialog::ConvertDialog(QList<std::shared_ptr<const UICommon::GameFile>> fi
   OnFormatChanged();
 }
 
-void ConvertDialog::AddToFormatComboBox(const QString& name, DiscIO::BlobType format)
-{
-  if (std::all_of(m_files.begin(), m_files.end(),
-                  [format](const auto& file) { return file->GetBlobType() == format; }))
-  {
-    return;
-  }
-
-  m_format->addItem(name, static_cast<int>(format));
-}
-
 void ConvertDialog::AddToBlockSizeComboBox(int size)
 {
   m_block_size->addItem(QString::fromStdString(UICommon::FormatSize(size, 0)), size);
@@ -138,8 +131,6 @@ void ConvertDialog::OnFormatChanged()
   {
   case DiscIO::BlobType::GCZ:
   {
-    m_block_size->setEnabled(true);
-
     // In order for versions of Dolphin prior to 5.0-11893 to be able to convert a GCZ file
     // to ISO without messing up the final part of the file in some way, the file size
     // must be an integer multiple of the block size (fixed in 3aa463c) and must not be
@@ -176,9 +167,10 @@ void ConvertDialog::OnFormatChanged()
     break;
   }
   default:
-    m_block_size->setEnabled(false);
     break;
   }
+
+  m_block_size->setEnabled(m_block_size->count() > 1);
 }
 
 bool ConvertDialog::ShowAreYouSureDialog(const QString& text)
@@ -329,8 +321,10 @@ void ConvertDialog::Convert()
 
     if (!blob_reader)
     {
-      QErrorMessage(this).showMessage(
+      ModalMessageBox::critical(
+          this, tr("Error"),
           tr("Failed to open the input file \"%1\".").arg(QString::fromStdString(original_path)));
+      return;
     }
     else
     {
@@ -361,7 +355,8 @@ void ConvertDialog::Convert()
       progress_dialog.GetRaw()->exec();
       if (!good.get())
       {
-        QErrorMessage(this).showMessage(tr("Dolphin failed to complete the requested action."));
+        ModalMessageBox::critical(this, tr("Error"),
+                                  tr("Dolphin failed to complete the requested action."));
         return;
       }
     }

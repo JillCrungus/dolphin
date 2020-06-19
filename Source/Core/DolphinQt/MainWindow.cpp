@@ -74,6 +74,7 @@
 #include "DolphinQt/Debugger/MemoryWidget.h"
 #include "DolphinQt/Debugger/NetworkWidget.h"
 #include "DolphinQt/Debugger/RegisterWidget.h"
+#include "DolphinQt/Debugger/ThreadWidget.h"
 #include "DolphinQt/Debugger/WatchWidget.h"
 #include "DolphinQt/DiscordHandler.h"
 #include "DolphinQt/FIFO/FIFOPlayerWindow.h"
@@ -393,20 +394,33 @@ void MainWindow::CreateComponents()
   m_memory_widget = new MemoryWidget(this);
   m_network_widget = new NetworkWidget(this);
   m_register_widget = new RegisterWidget(this);
+  m_thread_widget = new ThreadWidget(this);
   m_watch_widget = new WatchWidget(this);
   m_breakpoint_widget = new BreakpointWidget(this);
   m_code_widget = new CodeWidget(this);
   m_cheats_manager = new CheatsManager(this);
 
-  connect(m_watch_widget, &WatchWidget::RequestMemoryBreakpoint,
-          [this](u32 addr) { m_breakpoint_widget->AddAddressMBP(addr); });
-  connect(m_register_widget, &RegisterWidget::RequestMemoryBreakpoint,
-          [this](u32 addr) { m_breakpoint_widget->AddAddressMBP(addr); });
-  connect(m_register_widget, &RegisterWidget::RequestViewInMemory, m_memory_widget,
-          [this](u32 addr) { m_memory_widget->SetAddress(addr); });
-  connect(m_register_widget, &RegisterWidget::RequestViewInCode, m_code_widget, [this](u32 addr) {
+  const auto request_watch = [this](QString name, u32 addr) {
+    m_watch_widget->AddWatch(name, addr);
+  };
+  const auto request_breakpoint = [this](u32 addr) { m_breakpoint_widget->AddBP(addr); };
+  const auto request_memory_breakpoint = [this](u32 addr) {
+    m_breakpoint_widget->AddAddressMBP(addr);
+  };
+  const auto request_view_in_memory = [this](u32 addr) { m_memory_widget->SetAddress(addr); };
+  const auto request_view_in_code = [this](u32 addr) {
     m_code_widget->SetAddress(addr, CodeViewWidget::SetAddressUpdate::WithUpdate);
-  });
+  };
+
+  connect(m_watch_widget, &WatchWidget::RequestMemoryBreakpoint, request_memory_breakpoint);
+  connect(m_register_widget, &RegisterWidget::RequestMemoryBreakpoint, request_memory_breakpoint);
+  connect(m_register_widget, &RegisterWidget::RequestViewInMemory, request_view_in_memory);
+  connect(m_register_widget, &RegisterWidget::RequestViewInCode, request_view_in_code);
+  connect(m_thread_widget, &ThreadWidget::RequestBreakpoint, request_breakpoint);
+  connect(m_thread_widget, &ThreadWidget::RequestMemoryBreakpoint, request_memory_breakpoint);
+  connect(m_thread_widget, &ThreadWidget::RequestWatch, request_watch);
+  connect(m_thread_widget, &ThreadWidget::RequestViewInMemory, request_view_in_memory);
+  connect(m_thread_widget, &ThreadWidget::RequestViewInCode, request_view_in_code);
 
   connect(m_code_widget, &CodeWidget::BreakpointsChanged, m_breakpoint_widget,
           &BreakpointWidget::Update);
@@ -644,6 +658,7 @@ void MainWindow::ConnectStack()
   addDockWidget(Qt::LeftDockWidgetArea, m_log_config_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_code_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_register_widget);
+  addDockWidget(Qt::LeftDockWidgetArea, m_thread_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_watch_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_breakpoint_widget);
   addDockWidget(Qt::LeftDockWidgetArea, m_memory_widget);
@@ -653,6 +668,7 @@ void MainWindow::ConnectStack()
   tabifyDockWidget(m_log_widget, m_log_config_widget);
   tabifyDockWidget(m_log_widget, m_code_widget);
   tabifyDockWidget(m_log_widget, m_register_widget);
+  tabifyDockWidget(m_log_widget, m_thread_widget);
   tabifyDockWidget(m_log_widget, m_watch_widget);
   tabifyDockWidget(m_log_widget, m_breakpoint_widget);
   tabifyDockWidget(m_log_widget, m_memory_widget);
@@ -1079,7 +1095,7 @@ void MainWindow::HideRenderWidget(bool reinit)
     // The controller interface will still be registered to the old render widget, if the core
     // has booted. Therefore, we should re-bind it to the main window for now. When the core
     // is next started, it will be swapped back to the new render widget.
-    g_controller_interface.ChangeWindow(GetWindowSystemInfo(windowHandle()).render_surface);
+    g_controller_interface.ChangeWindow(GetWindowSystemInfo(windowHandle()).render_window);
   }
 }
 
@@ -1185,6 +1201,7 @@ void MainWindow::ShowNetPlaySetupDialog()
 void MainWindow::ShowNetPlayBrowser()
 {
   auto* browser = new NetPlayBrowser(this);
+  browser->setAttribute(Qt::WA_DeleteOnClose, true);
   connect(browser, &NetPlayBrowser::Join, this, &MainWindow::NetPlayJoin);
   browser->exec();
 }

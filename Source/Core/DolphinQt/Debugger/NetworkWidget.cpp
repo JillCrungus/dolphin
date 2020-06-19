@@ -18,7 +18,7 @@
 #include <sys/types.h>
 #endif
 
-#include "Core/ConfigManager.h"
+#include "Core/Config/MainSettings.h"
 #include "Core/IOS/Network/SSL.h"
 #include "Core/IOS/Network/Socket.h"
 #include "DolphinQt/Host.h"
@@ -90,6 +90,16 @@ QTableWidgetItem* GetSocketState(s32 host_fd)
   return new QTableWidgetItem(QTableWidget::tr("Unbound"));
 }
 
+static QString GetAddressAndPort(const sockaddr_in& addr)
+{
+  char buffer[16];
+  const char* addr_str = inet_ntop(AF_INET, &addr.sin_addr, buffer, sizeof(buffer));
+  if (!addr_str)
+    return {};
+
+  return QStringLiteral("%1:%2").arg(QString::fromLatin1(addr_str)).arg(ntohs(addr.sin_port));
+}
+
 QTableWidgetItem* GetSocketName(s32 host_fd)
 {
   if (host_fd < 0)
@@ -100,18 +110,19 @@ QTableWidgetItem* GetSocketName(s32 host_fd)
   if (getsockname(host_fd, reinterpret_cast<sockaddr*>(&sock_addr), &sock_addr_len) != 0)
     return new QTableWidgetItem(QTableWidget::tr("Unknown"));
 
-  const QString sock_name = QStringLiteral("%1:%2")
-                                .arg(QString::fromLatin1(inet_ntoa(sock_addr.sin_addr)))
-                                .arg(ntohs(sock_addr.sin_port));
+  const QString sock_name = GetAddressAndPort(sock_addr);
+  if (sock_name.isEmpty())
+    return new QTableWidgetItem(QTableWidget::tr("Unknown"));
 
   sockaddr_in peer_addr;
   socklen_t peer_addr_len = sizeof(sockaddr_in);
   if (getpeername(host_fd, reinterpret_cast<sockaddr*>(&peer_addr), &peer_addr_len) != 0)
     return new QTableWidgetItem(sock_name);
 
-  const QString peer_name = QStringLiteral("%1:%2")
-                                .arg(QString::fromLatin1(inet_ntoa(peer_addr.sin_addr)))
-                                .arg(ntohs(peer_addr.sin_port));
+  const QString peer_name = GetAddressAndPort(peer_addr);
+  if (peer_name.isEmpty())
+    return new QTableWidgetItem(sock_name);
+
   return new QTableWidgetItem(QStringLiteral("%1->%2").arg(sock_name).arg(peer_name));
 }
 }  // namespace
@@ -180,16 +191,21 @@ void NetworkWidget::CreateWidgets()
 
 void NetworkWidget::ConnectWidgets()
 {
-  connect(m_dump_ssl_read_checkbox, &QCheckBox::stateChanged,
-          [](int state) { SConfig::GetInstance().m_SSLDumpRead = state == Qt::Checked; });
-  connect(m_dump_ssl_write_checkbox, &QCheckBox::stateChanged,
-          [](int state) { SConfig::GetInstance().m_SSLDumpWrite = state == Qt::Checked; });
-  connect(m_dump_root_ca_checkbox, &QCheckBox::stateChanged,
-          [](int state) { SConfig::GetInstance().m_SSLDumpRootCA = state == Qt::Checked; });
-  connect(m_dump_peer_cert_checkbox, &QCheckBox::stateChanged,
-          [](int state) { SConfig::GetInstance().m_SSLDumpPeerCert = state == Qt::Checked; });
-  connect(m_verify_certificates_checkbox, &QCheckBox::stateChanged,
-          [](int state) { SConfig::GetInstance().m_SSLVerifyCert = state == Qt::Checked; });
+  connect(m_dump_ssl_read_checkbox, &QCheckBox::stateChanged, [](int state) {
+    Config::SetBaseOrCurrent(Config::MAIN_NETWORK_SSL_DUMP_READ, state == Qt::Checked);
+  });
+  connect(m_dump_ssl_write_checkbox, &QCheckBox::stateChanged, [](int state) {
+    Config::SetBaseOrCurrent(Config::MAIN_NETWORK_SSL_DUMP_WRITE, state == Qt::Checked);
+  });
+  connect(m_dump_root_ca_checkbox, &QCheckBox::stateChanged, [](int state) {
+    Config::SetBaseOrCurrent(Config::MAIN_NETWORK_SSL_DUMP_ROOT_CA, state == Qt::Checked);
+  });
+  connect(m_dump_peer_cert_checkbox, &QCheckBox::stateChanged, [](int state) {
+    Config::SetBaseOrCurrent(Config::MAIN_NETWORK_SSL_DUMP_PEER_CERT, state == Qt::Checked);
+  });
+  connect(m_verify_certificates_checkbox, &QCheckBox::stateChanged, [](int state) {
+    Config::SetBaseOrCurrent(Config::MAIN_NETWORK_SSL_VERIFY_CERTIFICATES, state == Qt::Checked);
+  });
 }
 
 void NetworkWidget::Update()
@@ -226,12 +242,12 @@ void NetworkWidget::Update()
   }
   m_ssl_table->resizeColumnsToContents();
 
-  const auto& config = SConfig::GetInstance();
-  m_dump_ssl_read_checkbox->setChecked(config.m_SSLDumpRead);
-  m_dump_ssl_write_checkbox->setChecked(config.m_SSLDumpWrite);
-  m_dump_root_ca_checkbox->setChecked(config.m_SSLDumpRootCA);
-  m_dump_peer_cert_checkbox->setChecked(config.m_SSLDumpPeerCert);
-  m_verify_certificates_checkbox->setChecked(config.m_SSLVerifyCert);
+  m_dump_ssl_read_checkbox->setChecked(Config::Get(Config::MAIN_NETWORK_SSL_DUMP_READ));
+  m_dump_ssl_write_checkbox->setChecked(Config::Get(Config::MAIN_NETWORK_SSL_DUMP_WRITE));
+  m_dump_root_ca_checkbox->setChecked(Config::Get(Config::MAIN_NETWORK_SSL_DUMP_ROOT_CA));
+  m_dump_peer_cert_checkbox->setChecked(Config::Get(Config::MAIN_NETWORK_SSL_DUMP_PEER_CERT));
+  m_verify_certificates_checkbox->setChecked(
+      Config::Get(Config::MAIN_NETWORK_SSL_VERIFY_CERTIFICATES));
 }
 
 QGroupBox* NetworkWidget::CreateSocketTableGroup()

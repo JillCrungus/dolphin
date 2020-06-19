@@ -254,20 +254,24 @@ void GameList::ShowContextMenu(const QPoint&)
 
   QMenu* menu = new QMenu(this);
 
+  const auto can_convert = [](const std::shared_ptr<const UICommon::GameFile>& game) {
+    // Converting from TGC is temporarily disabled because PR #8738 was merged prematurely.
+    // The TGC check will be removed by PR #8644.
+    return DiscIO::IsDisc(game->GetPlatform()) && game->IsVolumeSizeAccurate() &&
+           game->GetBlobType() != DiscIO::BlobType::TGC;
+  };
+
   if (HasMultipleSelected())
   {
-    if (std::all_of(GetSelectedGames().begin(), GetSelectedGames().end(), [](const auto& game) {
-          // Converting from TGC is temporarily disabled because PR #8738 was merged prematurely.
-          // The TGC check will be removed by PR #8644.
-          return DiscIO::IsDisc(game->GetPlatform()) && game->IsVolumeSizeAccurate() &&
-                 game->GetBlobType() != DiscIO::BlobType::TGC;
-        }))
+    const auto selected_games = GetSelectedGames();
+
+    if (std::all_of(selected_games.begin(), selected_games.end(), can_convert))
     {
       menu->addAction(tr("Convert Selected Files..."), this, &GameList::ConvertFile);
       menu->addSeparator();
     }
 
-    if (std::all_of(GetSelectedGames().begin(), GetSelectedGames().end(),
+    if (std::all_of(selected_games.begin(), selected_games.end(),
                     [](const auto& game) { return DiscIO::IsWii(game->GetPlatform()); }))
     {
       menu->addAction(tr("Export Wii Saves"), this, &GameList::ExportWiiSave);
@@ -294,7 +298,7 @@ void GameList::ShowContextMenu(const QPoint&)
       menu->addAction(tr("Set as &Default ISO"), this, &GameList::SetDefaultISO);
       const auto blob_type = game->GetBlobType();
 
-      if (game->IsVolumeSizeAccurate())
+      if (can_convert(game))
         menu->addAction(tr("Convert File..."), this, &GameList::ConvertFile);
 
       QAction* change_disc = menu->addAction(tr("Change &Disc"), this, &GameList::ChangeDisc);

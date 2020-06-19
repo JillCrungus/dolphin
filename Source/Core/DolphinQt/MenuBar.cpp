@@ -136,6 +136,7 @@ void MenuBar::OnEmulationStateChanged(Core::State state)
   m_jit_interpreter_core->setEnabled(running);
   m_jit_block_linking->setEnabled(!running);
   m_jit_disable_cache->setEnabled(!running);
+  m_jit_disable_fastmem->setEnabled(!running);
   m_jit_clear_cache->setEnabled(running);
   m_jit_log_coverage->setEnabled(!running);
   m_jit_search_instruction->setEnabled(running);
@@ -168,6 +169,7 @@ void MenuBar::OnDebugModeToggled(bool enabled)
   // View
   m_show_code->setVisible(enabled);
   m_show_registers->setVisible(enabled);
+  m_show_threads->setVisible(enabled);
   m_show_watch->setVisible(enabled);
   m_show_breakpoints->setVisible(enabled);
   m_show_memory->setVisible(enabled);
@@ -443,6 +445,14 @@ void MenuBar::AddViewMenu()
   connect(m_show_registers, &QAction::toggled, &Settings::Instance(),
           &Settings::SetRegistersVisible);
   connect(&Settings::Instance(), &Settings::RegistersVisibilityChanged, m_show_registers,
+          &QAction::setChecked);
+
+  m_show_threads = view_menu->addAction(tr("&Threads"));
+  m_show_threads->setCheckable(true);
+  m_show_threads->setChecked(Settings::Instance().IsThreadsVisible());
+
+  connect(m_show_threads, &QAction::toggled, &Settings::Instance(), &Settings::SetThreadsVisible);
+  connect(&Settings::Instance(), &Settings::ThreadsVisibilityChanged, m_show_threads,
           &QAction::setChecked);
 
   // i18n: This kind of "watch" is used for watching emulated memory.
@@ -798,6 +808,14 @@ void MenuBar::AddJITMenu()
   m_jit_disable_cache->setChecked(SConfig::GetInstance().bJITNoBlockCache);
   connect(m_jit_disable_cache, &QAction::toggled, [this](bool enabled) {
     SConfig::GetInstance().bJITNoBlockCache = enabled;
+    ClearCache();
+  });
+
+  m_jit_disable_fastmem = m_jit->addAction(tr("Disable Fastmem"));
+  m_jit_disable_fastmem->setCheckable(true);
+  m_jit_disable_fastmem->setChecked(!SConfig::GetInstance().bFastmem);
+  connect(m_jit_disable_fastmem, &QAction::toggled, [this](bool enabled) {
+    SConfig::GetInstance().bFastmem = !enabled;
     ClearCache();
   });
 

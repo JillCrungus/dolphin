@@ -102,7 +102,7 @@ void Init()
   VideoBackendBase::PopulateList();
   WiimoteReal::LoadSettings();
   GCAdapter::Init();
-  VideoBackendBase::ActivateBackend(SConfig::GetInstance().m_strVideoBackend);
+  VideoBackendBase::ActivateBackend(Config::Get(Config::MAIN_GFX_BACKEND));
 
   Common::SetEnableAlert(SConfig::GetInstance().bUsePanicHandlers);
 }
@@ -399,7 +399,7 @@ bool TriggerSTMPowerEvent()
   return true;
 }
 
-#if defined(HAVE_XRANDR) && HAVE_X11
+#if defined(HAVE_XRANDR) && HAVE_XRANDR
 void EnableScreenSaver(Window win, bool enable)
 #else
 void EnableScreenSaver(bool enable)

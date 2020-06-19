@@ -280,14 +280,35 @@ public final class SettingsFragmentPresenter
 
   private void addAudioSettings(ArrayList<SettingsItem> sl)
   {
+    Setting dspEmulationEngine = null;
     Setting audioStretch = null;
     Setting audioVolume = null;
 
     SettingSection coreSection = mSettings.getSection(Settings.SECTION_INI_CORE);
     SettingSection dspSection = mSettings.getSection(Settings.SECTION_INI_DSP);
+    dspEmulationEngine = dspSection.getSetting(SettingsFile.KEY_DSP_ENGINE);
     audioStretch = coreSection.getSetting(SettingsFile.KEY_AUDIO_STRETCH);
     audioVolume = dspSection.getSetting(SettingsFile.KEY_AUDIO_VOLUME);
 
+    // TODO: Exclude values from arrays instead of having multiple arrays.
+    int defaultCpuCore = NativeLibrary.DefaultCPUCore();
+    int dspEngineEntries;
+    int dspEngineValues;
+    if (defaultCpuCore == 1)  // x86-64
+    {
+      dspEngineEntries = R.array.dspEngineEntriesX86_64;
+      dspEngineValues = R.array.dspEngineValuesX86_64;
+    }
+    else  // Generic
+    {
+      dspEngineEntries = R.array.dspEngineEntriesGeneric;
+      dspEngineValues = R.array.dspEngineValuesGeneric;
+    }
+    // DSP Emulation Engine controls two settings.
+    // DSP Emulation Engine is read by Settings.saveSettings to modify the relevant settings.
+    sl.add(new SingleChoiceSetting(SettingsFile.KEY_DSP_ENGINE, Settings.SECTION_INI_DSP,
+            R.string.dsp_emulation_engine, 0, dspEngineEntries, dspEngineValues, 0,
+            dspEmulationEngine));
     sl.add(new CheckBoxSetting(SettingsFile.KEY_AUDIO_STRETCH, Settings.SECTION_INI_CORE,
             R.string.audio_stretch, R.string.audio_stretch_description, false, audioStretch));
     sl.add(new SliderSetting(SettingsFile.KEY_AUDIO_VOLUME, Settings.SECTION_INI_DSP,
@@ -296,6 +317,7 @@ public final class SettingsFragmentPresenter
 
   private void addPathsSettings(ArrayList<SettingsItem> sl)
   {
+    Setting recursiveISOPaths = null;
     Setting defaultISO = null;
     Setting NANDRootPath = null;
     Setting dumpPath = null;
@@ -305,6 +327,7 @@ public final class SettingsFragmentPresenter
 
     SettingSection coreSection = mSettings.getSection(Settings.SECTION_INI_CORE);
     SettingSection generalSection = mSettings.getSection(Settings.SECTION_INI_GENERAL);
+    recursiveISOPaths = generalSection.getSetting(SettingsFile.KEY_RECURSIVE_ISO_PATHS);
     defaultISO = coreSection.getSetting(SettingsFile.KEY_DEFAULT_ISO);
     NANDRootPath = generalSection.getSetting(SettingsFile.KEY_NAND_ROOT_PATH);
     dumpPath = generalSection.getSetting(SettingsFile.KEY_DUMP_PATH);
@@ -312,6 +335,8 @@ public final class SettingsFragmentPresenter
     resourcePackPath = generalSection.getSetting(SettingsFile.KEY_RESOURCE_PACK_PATH);
     wiiSDCardPath = generalSection.getSetting(SettingsFile.KEY_WII_SD_CARD_PATH);
 
+    sl.add(new CheckBoxSetting(SettingsFile.KEY_RECURSIVE_ISO_PATHS, Settings.SECTION_INI_GENERAL,
+            R.string.search_subfolders, 0, false, recursiveISOPaths));
     sl.add(new FilePicker(SettingsFile.FILE_NAME_DOLPHIN, SettingsFile.KEY_DEFAULT_ISO,
             Settings.SECTION_INI_CORE, R.string.default_ISO, 0, "",
             MainPresenter.REQUEST_GAME_FILE, defaultISO));
@@ -360,16 +385,20 @@ public final class SettingsFragmentPresenter
   private void addWiiSettings(ArrayList<SettingsItem> sl)
   {
     Setting wiiSDCard = null;
+    Setting wiiSDWrites = null;
     Setting continuousScan = null;
     Setting wiimoteSpeaker = null;
 
     SettingSection coreSection = mSettings.getSection(Settings.SECTION_INI_CORE);
     wiiSDCard = coreSection.getSetting(SettingsFile.KEY_WII_SD_CARD);
+    wiiSDWrites = coreSection.getSetting(SettingsFile.KEY_WII_SD_CARD_ALLOW_WRITES);
     continuousScan = coreSection.getSetting(SettingsFile.KEY_WIIMOTE_SCAN);
     wiimoteSpeaker = coreSection.getSetting(SettingsFile.KEY_WIIMOTE_SPEAKER);
 
     sl.add(new CheckBoxSetting(SettingsFile.KEY_WII_SD_CARD, Settings.SECTION_INI_CORE,
             R.string.insert_sd_card, R.string.insert_sd_card_description, true, wiiSDCard));
+    sl.add(new CheckBoxSetting(SettingsFile.KEY_WII_SD_CARD_ALLOW_WRITES, Settings.SECTION_INI_CORE,
+            R.string.wii_sd_card_allow_writes, 0, true, wiiSDWrites));
     sl.add(new CheckBoxSetting(SettingsFile.KEY_WIIMOTE_SCAN, Settings.SECTION_INI_CORE,
             R.string.wiimote_scanning, R.string.wiimote_scanning_description, true,
             continuousScan));
@@ -389,8 +418,8 @@ public final class SettingsFragmentPresenter
     overclock = coreSection.getSetting(SettingsFile.KEY_OVERCLOCK_PERCENT);
 
     // TODO: Having different emuCoresEntries/emuCoresValues for each architecture is annoying.
-    // The proper solution would be to have one emuCoresEntries and one emuCoresValues
-    // and exclude the values that aren't present in PowerPC::AvailableCPUCores().
+    //       The proper solution would be to have one emuCoresEntries and one emuCoresValues
+    //       and exclude the values that aren't present in PowerPC::AvailableCPUCores().
     int defaultCpuCore = NativeLibrary.DefaultCPUCore();
     int emuCoresEntries;
     int emuCoresValues;
@@ -425,7 +454,7 @@ public final class SettingsFragmentPresenter
     {
       if (mGameID.equals(""))
       {
-        // TODO This controller_0 + i business is quite the hack. It should work, but only if the definitions are kept together and in order.
+        // TODO: This controller_0 + i business is quite the hack. It should work, but only if the definitions are kept together and in order.
         Setting gcPadSetting = mSettings.getSection(Settings.SECTION_INI_CORE)
                 .getSetting(SettingsFile.KEY_GCPAD_TYPE + i);
         sl.add(new SingleChoiceSetting(SettingsFile.KEY_GCPAD_TYPE + i, Settings.SECTION_INI_CORE,
@@ -447,7 +476,7 @@ public final class SettingsFragmentPresenter
   {
     for (int i = 0; i < 4; i++)
     {
-      // TODO This wiimote_0 + i business is quite the hack. It should work, but only if the definitions are kept together and in order.
+      // TODO: This wiimote_0 + i business is quite the hack. It should work, but only if the definitions are kept together and in order.
       if (mGameID.equals(""))
       {
         Setting wiimoteSetting = mSettings.getSection(Settings.SECTION_WIIMOTE + (i + 1))
