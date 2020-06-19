@@ -7,6 +7,7 @@
 #include "Core/Config/NetplaySettings.h"
 #include "Core/Config/UISettings.h"
 #include "Core/ConfigManager.h"
+#include "Core/TS/TSConfigManager.h"
 
 #ifdef USE_DISCORD_PRESENCE
 
@@ -64,8 +65,7 @@ void HandleDiscordJoin(const char* join_secret)
   case SecretType::Empty:
     return;
 
-  case SecretType::IPAddress:
-  {
+  case SecretType::IPAddress: {
     // SetBaseOrCurrent will save the ip address, which isn't what's wanted in this situation
     Config::SetCurrent(Config::NETPLAY_TRAVERSAL_CHOICE, "direct");
 
@@ -78,8 +78,7 @@ void HandleDiscordJoin(const char* join_secret)
   }
   break;
 
-  case SecretType::RoomID:
-  {
+  case SecretType::RoomID: {
     Config::SetCurrent(Config::NETPLAY_TRAVERSAL_CHOICE, "traversal");
 
     Config::SetCurrent(Config::NETPLAY_HOST_CODE, secret.substr(offset));
@@ -92,6 +91,15 @@ void HandleDiscordJoin(const char* join_secret)
 
 std::string ArtworkForGameId(const std::string& gameid)
 {
+  u32 levelID = TSConfig::GetInstance().GetLevelID();
+  if (levelID == -1)
+    return "";
+
+  char artworkID[64];
+  sprintf(artworkID, "level_%i", levelID);
+  return artworkID;
+
+#ifdef DISABLED_OLD_ARTWORK_STUFF
   static const std::set<std::string> REGISTERED_GAMES{
       "GAF",  // GAFE01: Animal Crossing
       "RUU",  // RUUE01: Animal Crossing: City Folk
@@ -173,6 +181,7 @@ std::string ArtworkForGameId(const std::string& gameid)
     return "game_" + region_neutral_gameid;
   }
   return "";
+#endif
 }
 
 }  // namespace
@@ -192,7 +201,7 @@ void Init()
   handlers.joinRequest = HandleDiscordJoinRequest;
   handlers.joinGame = HandleDiscordJoin;
   // The number is the client ID for Dolphin, it's used for images and the application name
-  Discord_Initialize("455712169795780630", &handlers, 1, nullptr);
+  Discord_Initialize("707303936415105054", &handlers, 1, nullptr);
   UpdateDiscordPresence();
 #endif
 }
@@ -223,23 +232,27 @@ void UpdateDiscordPresence(int party_size, SecretType type, const std::string& s
     return;
 
   const std::string& title =
-      current_game.empty() ? SConfig::GetInstance().GetTitleDescription() : current_game;
+      TSConfig::GetInstance().GetDefaultLevelNameForID(TSConfig::GetInstance().GetLevelID());
   std::string game_artwork = ArtworkForGameId(SConfig::GetInstance().GetGameID());
 
   DiscordRichPresence discord_presence = {};
   if (game_artwork.empty())
   {
     discord_presence.largeImageKey = "dolphin_logo";
-    discord_presence.largeImageText = "Dolphin is an emulator for the GameCube and the Wii.";
+    discord_presence.largeImageText = "SeaMonkey is a modding-oriented Dolphin branch made "
+                                      "specifically for TimeSplitters: Future Perfect.";
   }
   else
   {
     discord_presence.largeImageKey = game_artwork.c_str();
     discord_presence.largeImageText = title.c_str();
-    discord_presence.smallImageKey = "dolphin_logo";
-    discord_presence.smallImageText = "Dolphin is an emulator for the GameCube and the Wii.";
+
+    // Gamemode?
+    // discord_presence.smallImageKey = "dolphin_logo";
+    // discord_presence.smallImageText = "SeaMonkey is a modding-oriented Dolphin branch made
+    // specifically for TimeSplitters: Future Perfect.";
   }
-  discord_presence.details = title.empty() ? "Not in-game" : title.c_str();
+  discord_presence.details = title.empty() ? "Not playing" : title.c_str();
   discord_presence.startTimestamp = std::time(nullptr);
 
   if (party_size > 0)
@@ -259,7 +272,7 @@ void UpdateDiscordPresence(int party_size, SecretType type, const std::string& s
     }
   }
 
-  std::string party_id;
+      std::string party_id;
   std::string secret_final;
   if (type != SecretType::Empty)
   {

@@ -14,10 +14,12 @@
 #include "Core/GeckoCode.h"
 #include "Core/HLE/HLE_Misc.h"
 #include "Core/HLE/HLE_OS.h"
+#include "Core/HLE/TS3/HLE_TS3.h"
 #include "Core/HW/Memmap.h"
 #include "Core/IOS/ES/ES.h"
 #include "Core/PowerPC/PPCSymbolDB.h"
 #include "Core/PowerPC/PowerPC.h"
+#include "Core/TS/TSConfigManager.h"
 
 namespace HLE
 {
@@ -36,7 +38,7 @@ struct SPatch
 };
 
 // clang-format off
-constexpr std::array<SPatch, 23> OSPatches{{
+constexpr std::array<SPatch, 26> OSPatches{{
     // Placeholder, OSPatches[0] is the "non-existent function" index
     {"FAKE_TO_SKIP_0",               HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Generic},
 
@@ -68,7 +70,14 @@ constexpr std::array<SPatch, 23> OSPatches{{
 
     {"GeckoCodehandler",             HLE_Misc::GeckoCodeHandlerICacheFlush, HookType::Start,   HookFlag::Fixed},
     {"GeckoHandlerReturnTrampoline", HLE_Misc::GeckoReturnTrampoline,       HookType::Replace, HookFlag::Fixed},
-    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed} // apploader needs OSReport-like function
+    {"AppLoaderReport",              HLE_OS::HLE_GeneralDebugPrint,         HookType::Replace, HookFlag::Fixed}, // apploader needs OSReport-like function
+
+  {"SkipVideoFiles", HLE_Misc::UnimplementedFunction,       HookType::Replace, HookFlag::Fixed},
+
+  {"FixButtonCheats", HLE_TS3::HLE_ButtonCheatInputCheck, HookType::Replace, HookFlag::Fixed},
+
+  //The function this hooks has nothing to do with updating the current level, but it's called in places that makes it convenient to hijack for getting the current level
+  {"UpdateCurrentLevel", HLE_TS3::HLE_UpdateCurrentLevel, HookType::Start, HookFlag::Fixed}
 }};
 
 constexpr std::array<SPatch, 1> OSBreakPoints{{
@@ -89,6 +98,36 @@ void Patch(u32 addr, std::string_view func_name)
   }
 }
 
+void PatchTS3Functions()
+{
+  Patch(0x80031a40, "UpdateCurrentLevel");
+
+  if (TSConfig::GetInstance().bSkipVideos)
+  {
+    INFO_LOG(TS3, "User has requested video skip hack");
+    Patch(HLE_TS3::PLAY_THP_ADDRESS, "SkipVideoFiles");
+  }
+
+  if (TSConfig::GetInstance().bFixButtonCodes)
+  {
+    INFO_LOG(TS3, "Applying button code fix!");
+    Patch(HLE_TS3::BUTTONCHEAT_BUTTON_TEST, "FixButtonCheats");
+  }
+
+  if (TSConfig::GetInstance().bVerticalSplitscreen)
+  {
+    // Player 1
+    PowerPC::HostWrite_U32(0x80ad9088, 0x80259444);  // lwz        r5,-0x6f78(r13)
+    PowerPC::HostWrite_U32(0x38e5ffff, 0x8025944c);  // subi       r7,r5,0x1
+    PowerPC::HostWrite_U32(0x38deffff, 0x80259454);  // subi       r6,Half_screen_width,0x1
+
+    // Player 2
+    PowerPC::HostWrite_U32(0x38a00000, 0x80259470);  // li         r5,0x0
+
+    PowerPC::HostWrite_U32(0x7fc4f378, 0x80259478);  // or r4,half_screen_width,half_screen_width
+  }
+}
+
 void PatchFixedFunctions()
 {
   // HLE jump to loader (homebrew).  Disabled when Gecko is active as it interferes with the code
@@ -105,6 +144,8 @@ void PatchFixedFunctions()
   // This has to always be installed even if cheats are not enabled because of the possiblity of
   // loading a savestate where PC is inside the code handler while cheats are disabled.
   Patch(Gecko::HLE_TRAMPOLINE_ADDRESS, "GeckoHandlerReturnTrampoline");
+
+  PatchTS3Functions();
 }
 
 void PatchFunctions()

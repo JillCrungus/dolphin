@@ -66,6 +66,7 @@
 #include "DolphinQt/Config/LogWidget.h"
 #include "DolphinQt/Config/Mapping/MappingWindow.h"
 #include "DolphinQt/Config/SettingsWindow.h"
+#include "DolphinQt/Config/TimeSplittersWindow.h"
 #include "DolphinQt/Debugger/BreakpointWidget.h"
 #include "DolphinQt/Debugger/CodeViewWidget.h"
 #include "DolphinQt/Debugger/CodeWidget.h"
@@ -601,6 +602,7 @@ void MainWindow::ConnectToolBar()
   connect(m_tool_bar, &ToolBar::SettingsPressed, this, &MainWindow::ShowSettingsWindow);
   connect(m_tool_bar, &ToolBar::ControllersPressed, this, &MainWindow::ShowControllersWindow);
   connect(m_tool_bar, &ToolBar::GraphicsPressed, this, &MainWindow::ShowGraphicsWindow);
+  connect(m_tool_bar, &ToolBar::TSPressed, this, &MainWindow::ShowTSWindow);
 
   connect(m_tool_bar, &ToolBar::StepPressed, m_code_widget, &CodeWidget::Step);
   connect(m_tool_bar, &ToolBar::StepOverPressed, m_code_widget, &CodeWidget::StepOver);
@@ -950,6 +952,8 @@ void MainWindow::StartGame(const std::vector<std::string>& paths,
   StartGame(BootParameters::GenerateFromFile(paths, savestate_path));
 }
 
+std::array<std::string, 5> validIDs{"G3FP69", "G3FF69", "G3FE69", "G3FD69", "G3FS69"};
+
 void MainWindow::StartGame(std::unique_ptr<BootParameters>&& parameters)
 {
   // If we're running, only start a new game once we've stopped the last.
@@ -963,7 +967,15 @@ void MainWindow::StartGame(std::unique_ptr<BootParameters>&& parameters)
     return;
   }
 
-  // We need the render widget before booting.
+  std::string id = SConfig::GetInstance().GetGameID();
+  /*
+  if (std::find(std::begin(validIDs), std::end(validIDs), id) == std::end(validIDs))
+  {
+    ModalMessageBox::critical(this, tr("Error"), tr("This modified build of Dolphin is specifically designed to play TimeSplitters: Future Perfect. It cannot run any other game. Please select a TimeSplitters: Future Perfect game file."), QMessageBox::Ok);
+    return;
+  }
+  */
+   // We need the render widget before booting.
   ShowRenderWidget();
 
   // Boot up, show an error if it fails to load the game.
@@ -1166,6 +1178,17 @@ void MainWindow::ShowGraphicsWindow()
   m_graphics_window->show();
   m_graphics_window->raise();
   m_graphics_window->activateWindow();
+}
+
+void MainWindow::ShowTSWindow()
+{
+  if (!m_ts_window)
+  {
+    m_ts_window = new TSConfigWindow(this);
+  }
+  m_ts_window->show();
+  m_ts_window->raise();
+  m_ts_window->activateWindow();
 }
 
 void MainWindow::ShowNetPlaySetupDialog()

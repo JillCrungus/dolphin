@@ -172,6 +172,12 @@
     <Filter Include="PowerPC\JitArm64">
       <UniqueIdentifier>{9e91e72c-e432-4e02-8e03-c45c2b6f6957}</UniqueIdentifier>
     </Filter>
+    <Filter Include="HLE\TS3">
+      <UniqueIdentifier>{aa6b678d-08ea-46b4-b2d3-398f2a2a07a1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TS">
+      <UniqueIdentifier>{f6c0922c-7df3-4352-a1e6-d8711cb19f0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BootManager.cpp" />
@@ -939,7 +945,13 @@
       <Filter>HW %28Flipper/Hollywood%29</Filter>
     </ClCompile>
     <ClCompile Include="PowerPC\ConditionRegister.cpp" />
-    <ClCompile Include="PowerPC\JitArm64\JitArm64_Integer.cpp">
+    <ClCompile Include="HLE\TS3\HLE_TS3.cpp">
+      <Filter>HLE\TS3</Filter>
+    </ClCompile>
+    <ClCompile Include="TS\TSConfigManager.cpp">
+      <Filter>TS</Filter>
+    </ClCompile>
+	<ClCompile Include="PowerPC\JitArm64\JitArm64_Integer.cpp">
       <Filter>PowerPC\JitArm64</Filter>
     </ClCompile>
     <ClCompile Include="PowerPC\JitArm64\JitArm64_LoadStore.cpp">
@@ -1728,7 +1740,13 @@
     <ClInclude Include="HW\AddressSpace.h">
       <Filter>HW %28Flipper/Hollywood%29</Filter>
     </ClInclude>
-    <ClInclude Include="PowerPC\JitArm64\JitArm64_RegCache.h">
+    <ClInclude Include="HLE\TS3\HLE_TS3.h">
+      <Filter>HLE\TS3</Filter>
+    </ClInclude>
+    <ClInclude Include="TS\TSConfigManager.h">
+      <Filter>TS</Filter>
+    </ClInclude>
+	<ClInclude Include="PowerPC\JitArm64\JitArm64_RegCache.h">
       <Filter>PowerPC\JitArm64</Filter>
     </ClInclude>
     <ClInclude Include="PowerPC\JitArm64\JitArm64Cache.h">

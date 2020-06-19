@@ -164,6 +164,8 @@ add_executable(dolphin-emu
   Config/PropertiesDialog.h
   Config/SettingsWindow.cpp
   Config/SettingsWindow.h
+  Config/TimeSplittersWindow.h
+  Config/TimeSplittersWindow.cpp
   Config/VerifyWidget.cpp
   Config/VerifyWidget.h
   Debugger/BreakpointWidget.cpp

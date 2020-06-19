@@ -582,6 +582,13 @@ float HostRead_F32(const u32 address)
   return Common::BitCast<float>(integral);
 }
 
+int HostRead_S32(const u32 address)
+{
+  const u32 integral = HostRead_U32(address);
+
+  return Common::BitCast<int>(integral);
+}
+
 double HostRead_F64(const u32 address)
 {
   const u64 integral = HostRead_U64(address);
@@ -621,6 +628,23 @@ void HostWrite_F64(const double var, const u32 address)
   const u64 integral = Common::BitCast<u64>(var);
 
   HostWrite_U64(integral, address);
+}
+
+void HostWrite_String(const char* var, const u32 address)
+{
+  size_t len = strlen(var);
+  int charsWritten = 0;
+  u32 curAddress = address;
+  do
+  {
+    u8 charByte = static_cast<u8>(var[charsWritten]);
+    HostWrite_U8(charByte, address);
+    ++curAddress;
+    ++charsWritten;
+  } while (charsWritten <= len);
+
+  //Once we're done write a null terminator
+  HostWrite_U8(curAddress, 0x0);
 }
 
 std::string HostGetString(u32 address, size_t size)

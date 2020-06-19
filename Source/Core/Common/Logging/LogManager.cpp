@@ -142,9 +142,10 @@ LogManager::LogManager()
   m_log[VIDEOINTERFACE] = {"VI", "Video Interface"};
   m_log[WIIMOTE] = {"Wiimote", "Wii Remote"};
   m_log[WII_IPC] = {"WII_IPC", "WII IPC"};
+  m_log[TS3] = {"TS3", "TimeSplitters"};
 
-  RegisterListener(LogListener::FILE_LISTENER,
-                   new FileLogListener(File::GetUserPath(F_MAINLOG_IDX)));
+      RegisterListener(LogListener::FILE_LISTENER,
+                       new FileLogListener(File::GetUserPath(F_MAINLOG_IDX)));
   RegisterListener(LogListener::CONSOLE_LISTENER, new ConsoleListener());
 
   // Set up log listeners

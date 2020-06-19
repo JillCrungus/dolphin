@@ -306,6 +306,7 @@
     <ClCompile Include="$(QtMocOutPrefix)StickWidget.cpp" />
     <ClCompile Include="$(QtMocOutPrefix)TASCheckBox.cpp" />
     <ClCompile Include="$(QtMocOutPrefix)TASInputWindow.cpp" />
+    <ClCompile Include="$(QtMocOutPrefix)TimeSplittersWindow.cpp" />
     <ClCompile Include="$(QtMocOutPrefix)ToolBar.cpp" />
     <ClCompile Include="$(QtMocOutPrefix)USBDeviceAddToWhitelistDialog.cpp" />
     <ClCompile Include="$(QtMocOutPrefix)Updater.cpp" />
@@ -379,6 +380,7 @@
     <ClCompile Include="Config\PatchesWidget.cpp" />
     <ClCompile Include="Config\PropertiesDialog.cpp" />
     <ClCompile Include="Config\SettingsWindow.cpp" />
+    <ClCompile Include="Config\TimeSplittersWindow.cpp" />
     <ClCompile Include="Config\VerifyWidget.cpp" />
     <ClCompile Include="ConvertDialog.cpp" />
     <ClCompile Include="Debugger\CodeViewWidget.cpp" />
@@ -455,6 +457,7 @@
   <!--Put standard C/C++ headers here. Headers that are listed in the QtMoc ItemGroup must NOT be listed here.-->
   <ItemGroup>
     <ClInclude Include="Config\Mapping\MappingCommon.h" />
+    <QtMoc Include="Config\TimeSplittersWindow.h" />
     <ClInclude Include="Debugger\RegisterColumn.h" />
     <ClInclude Include="QtUtils\ActionHelper.h" />
     <ClInclude Include="QtUtils\ImageConverter.h" />

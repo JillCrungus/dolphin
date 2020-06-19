@@ -172,10 +172,6 @@ static bool SetupMemory(u64 ios_title_id, MemorySetupType setup_type)
 
 void RAMOverrideForIOSMemoryValues(MemorySetupType setup_type)
 {
-  // Don't touch anything if the feature isn't enabled.
-  if (!Config::Get(Config::MAIN_RAM_OVERRIDE_ENABLE))
-    return;
-
   // Some unstated constants that can be inferred.
   const u32 ipc_buffer_size =
       Memory::Read_U32(ADDR_IPC_BUFFER_END) - Memory::Read_U32(ADDR_IPC_BUFFER_BEGIN);
